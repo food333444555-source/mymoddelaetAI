@@ -13,7 +13,8 @@ public record TrackedMob(
         boolean hurt,
         boolean chargedCreeper,
         boolean renamed,
-        boolean returned
+        boolean returned,
+        boolean hurtStar
 ) {
     public int chunkX() {
         return x >> 4;
