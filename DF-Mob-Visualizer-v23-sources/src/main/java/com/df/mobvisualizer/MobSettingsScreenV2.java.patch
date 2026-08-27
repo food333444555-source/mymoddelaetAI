@@ -1,0 +1,8 @@
+--- a/DF-Mob-Visualizer-v23-sources/src/main/java/com/df/mobvisualizer/MobSettingsScreenV2.java
++++ b/DF-Mob-Visualizer-v23-sources/src/main/java/com/df/mobvisualizer/MobSettingsScreenV2.java
+@@
+     private void buildColors(int left) {
+-        button(left, 65, 310, "← Назад к разделам", b -> open("main"));
++        button(left, 65, 150, "Редактор цветов мобов", b -> MinecraftClient.getInstance().setScreen(new MobColorsEditorScreen(this, config)));
++        button(left, 95, 150, "← Назад к разделам", b -> open("main"));
+     }
