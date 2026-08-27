@@ -180,6 +180,9 @@ public final class MobSettingsScreenV2 extends Screen {
         toggle(left, 90, "RETURNED мобы", config.centerReturnedMobs, () -> config.centerReturnedMobs = !config.centerReturnedMobs);
         toggle(left, 115, "HURT мобы", config.centerHurtMobs, () -> config.centerHurtMobs = !config.centerHurtMobs);
         toggle(left, 140, "Игроки", config.centerPlayers, () -> config.centerPlayers = !config.centerPlayers);
+        toggle(left, 165, "СЕССИЯ", config.centerSessionMobs, () -> config.centerSessionMobs = !config.centerSessionMobs);
+        toggle(left, 190, "НИЗКИЙ ID", config.centerLowIds, () -> config.centerLowIds = !config.centerLowIds);
+        toggle(left, 215, "ВРАЖДЕБНЫЕ", config.centerHostileMobs, () -> config.centerHostileMobs = !config.centerHostileMobs);
     }
 
     private void buildKeys(int left) {
