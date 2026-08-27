@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "df_mob_visualizer",
+  "version": "${version}",
+  "name": "DF Mob Visualizer",
+  "description": "In-game HUD and persistent chunk visualization for the DF entity transmitter.",
+  "authors": ["DF"],
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.df.mobvisualizer.C2MEmod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.10",
+    "fabric-api": "*",
+    "minecraft": "1.21.4"
+  }
+}
