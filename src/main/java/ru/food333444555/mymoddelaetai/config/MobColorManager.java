@@ -4,8 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.util.registry.Registry;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -14,7 +14,9 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class MobColorManager {
@@ -46,6 +48,7 @@ public class MobColorManager {
                 }
             } else {
                 // create default file
+                autoFillFromRegistry();
                 saveConfig();
             }
         } catch (Exception e) {
@@ -69,16 +72,20 @@ public class MobColorManager {
         }
     }
 
-    public MobSettings getSettingsForEntity(Entity entity) {
+    public MobSettings getSettingsForId(String id) {
+        return mobs.getOrDefault(id, defaults);
+    }
+
+    public MobSettings getSettingsForEntityType(EntityType<?> type) {
+        String id = Registry.ENTITY_TYPE.getId(type).toString();
+        return getSettingsForId(id);
+    }
+
+    public MobSettings getSettingsForEntity(net.minecraft.entity.Entity entity) {
         if (entity == null) return defaults;
         EntityType<?> type = entity.getType();
-        String id = getEntityId(type);
-        MobSettings s = mobs.get(id);
-        if (s == null) {
-            // return a copy of defaults with minimal fields
-            return defaults;
-        }
-        return s;
+        String id = Registry.ENTITY_TYPE.getId(type).toString();
+        return getSettingsForId(id);
     }
 
     public MobSettings getSettingsById(String id) {
@@ -94,27 +101,46 @@ public class MobColorManager {
     }
 
     public void autoFillFromRegistry() {
-        // Best-effort: try to add all known entity types as keys with default values
         try {
-            for (EntityType<?> et : EntityType.TYPES) {
-                String id = getEntityId(et);
+            for (EntityType<?> et : Registry.ENTITY_TYPE) {
+                String id = Registry.ENTITY_TYPE.getId(et).toString();
                 if (id != null && !mobs.containsKey(id)) {
                     mobs.put(id, new MobSettings());
                 }
             }
         } catch (Throwable t) {
-            // older/newer mappings may differ; ignore if fails
+            // ignore
         }
     }
 
-    private String getEntityId(EntityType<?> type) {
-        try {
-            if (type == null) return null;
-            if (type.getRegistryName() != null) return type.getRegistryName().toString();
-        } catch (Throwable t) {
-            // fallback
+    public List<String> listAllMobIds() {
+        return new ArrayList<>(mobs.keySet());
+    }
+
+    public void addEventToMob(String id, String event) {
+        MobSettings s = mobs.computeIfAbsent(id, k -> new MobSettings());
+        if (s.alertEvents == null) s.alertEvents = new ArrayList<>();
+        if (!s.alertEvents.contains(event)) s.alertEvents.add(event);
+    }
+
+    public void removeEventFromMob(String id, String event) {
+        MobSettings s = mobs.get(id);
+        if (s == null || s.alertEvents == null) return;
+        s.alertEvents.remove(event);
+    }
+
+    public boolean mobHasEvent(String id, String event) {
+        MobSettings s = mobs.get(id);
+        return s != null && s.alertEvents != null && s.alertEvents.contains(event);
+    }
+
+    public List<String> listMobsWithEvent(String event) {
+        List<String> out = new ArrayList<>();
+        for (Map.Entry<String, MobSettings> e : mobs.entrySet()) {
+            if (e.getValue().alertEvents != null && e.getValue().alertEvents.contains(event)) {
+                out.add(e.getKey());
+            }
         }
-        // As fallback use toString
-        return type.toString();
+        return out;
     }
 }
