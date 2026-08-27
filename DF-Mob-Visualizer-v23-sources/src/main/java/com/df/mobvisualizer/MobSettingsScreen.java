@@ -24,8 +24,6 @@ public final class MobSettingsScreen extends Screen {
     private ButtonWidget chunksKeyButton;
     private ButtonWidget mobHighlightsKeyButton;
     private ButtonWidget settingsKeyButton;
-    private TextFieldWidget pinnedTypesField;
-    private TextFieldWidget highlightTypesField;
     private TextFieldWidget customColorsField;
     private TextFieldWidget chunkRulesField;
     private int scrollOffset;
@@ -90,19 +88,17 @@ public final class MobSettingsScreen extends Screen {
         addDrawableChild(new Slider(this, left, y, 310, 20, "Дальность чанков: ",
                 config.renderDistanceChunks, 1.0, 64.0, 1));
         y += 25;
-        pinnedTypesField = new TextFieldWidget(textRenderer, left, y, 310, 20,
-                Text.literal("Типы мобов для сессии"));
-        pinnedTypesField.setMaxLength(1000);
-        pinnedTypesField.setText(config.pinnedEntityTypes == null ? "" : config.pinnedEntityTypes);
-        pinnedTypesField.setPlaceholder(Text.literal("minecraft:zombie, minecraft:creeper"));
-        addDrawableChild(pinnedTypesField);
+        // Replace text input for pinned types with a button that opens selection screen
+        addDrawableChild(ButtonWidget.builder(Text.literal("Типы мобов для сессии: " +
+                        (config.pinnedEntityTypes == null || config.pinnedEntityTypes.isEmpty() ? "(ни одного)" : "...")),
+                button -> MinecraftClient.getInstance().setScreen(new MobEventSelectionScreen(this, config, "pinnedEntityTypes")))
+                .dimensions(left, y, 310, 20).build());
         y += 25;
-        highlightTypesField = new TextFieldWidget(textRenderer, left, y, 310, 20,
-                Text.literal("Мобы для подсветки через блоки"));
-        highlightTypesField.setMaxLength(2000);
-        highlightTypesField.setText(config.highlightEntityTypes == null ? "" : config.highlightEntityTypes);
-        highlightTypesField.setPlaceholder(Text.literal("Оставь пустым для категорий или: zombie, creeper"));
-        addDrawableChild(highlightTypesField);
+        // Replace text input for highlight types with a button
+        addDrawableChild(ButtonWidget.builder(Text.literal("Мобы для подсветки через блоки: " +
+                        (config.highlightEntityTypes == null || config.highlightEntityTypes.isEmpty() ? "(ни одного)" : "...")),
+                button -> MinecraftClient.getInstance().setScreen(new MobEventSelectionScreen(this, config, "highlightEntityTypes")))
+                .dimensions(left, y, 310, 20).build());
         y += 25;
         customColorsField = new TextFieldWidget(textRenderer, left, y, 310, 20,
                 Text.literal("Цвета мобов"));
@@ -124,6 +120,7 @@ public final class MobSettingsScreen extends Screen {
             button.setMessage(Text.literal(sessionLabel()));
             save();
         }).dimensions(left, y, 150, 20).build());
+        y += 25;
         addDrawableChild(ButtonWidget.builder(Text.literal("F7: " + (config.seeThroughMobs ? "мобы включены" : "мобы выключены")),
                 button -> {
                     config.seeThroughMobs = !config.seeThroughMobs;
@@ -331,8 +328,6 @@ public final class MobSettingsScreen extends Screen {
 
     @Override
     public void close() {
-        if (pinnedTypesField != null) config.pinnedEntityTypes = pinnedTypesField.getText();
-        if (highlightTypesField != null) config.highlightEntityTypes = highlightTypesField.getText();
         if (customColorsField != null) config.customMobColors = customColorsField.getText();
         if (chunkRulesField != null) config.chunkColorRules = chunkRulesField.getText();
         save();
