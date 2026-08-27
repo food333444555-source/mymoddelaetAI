@@ -1,5 +1,6 @@
 package com.df.mobvisualizer;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -161,7 +162,7 @@ public class MobColorsEditorScreen extends Screen {
         Integer colv = colors.get(mobIds.get(selectedIndex));
         int rgba = colv == null ? 0xFFFFFFFF : colv;
         // draw colored rectangle (simple)
-        fill(context.getMatrices(), previewX, previewY, previewX + previewSize, previewY + previewSize, rgba);
+        context.fill(previewX, previewY, previewX + previewSize, previewY + previewSize, rgba);
         fy += previewSize + 6;
 
         context.drawTextWithShadow(textRenderer, Text.literal("R:"), fx, fy, 0xFFFFFF);
@@ -214,6 +215,5 @@ public class MobColorsEditorScreen extends Screen {
         config.save();
     }
 
-    @Override
     public boolean isPauseScreen() { return false; }
 }

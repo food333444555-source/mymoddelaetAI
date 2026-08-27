@@ -123,7 +123,6 @@ public class MobEventSelectionScreen extends Screen {
         config.save();
     }
 
-    @Override
     public boolean isPauseScreen() {
         return false;
     }
