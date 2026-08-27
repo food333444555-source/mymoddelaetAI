@@ -1,0 +1,20 @@
+{
+  "defaults": {
+    "nameColor": "#FFFFFF",
+    "modelColor": "#FF0000",
+    "alpha": 0.6
+  },
+  "mobs": {
+    "minecraft:zombie": {
+      "enabled": true,
+      "showHudButton": true,
+      "pinnedInSession": false,
+      "highlightThroughWalls": true,
+      "nameColor": "#8FB700",
+      "modelColor": "#FF0000",
+      "alpha": 0.6,
+      "alertEnabled": true,
+      "alertEvents": ["spawn","setTarget","hurt"]
+    }
+  }
+}
