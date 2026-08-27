@@ -30,6 +30,7 @@ public final class MobOverlayState {
     private final Set<Integer> returnedIds = new HashSet<>();
     private final Map<Integer, TrackedMob> goneMobs = new HashMap<>();
     private final Map<Integer, Double> goneMaxDistance = new HashMap<>();
+    private final Map<Integer, Boolean> hurtStarMap = new HashMap<>();
     private int maxId;
     private int currentMaxId;
     private boolean sessionDirty;
@@ -62,6 +63,10 @@ public final class MobOverlayState {
 
     public synchronized void accept(TrackedMob mob) {
         mobs.put(mob.id(), mob);
+        
+        if (mob.hurt()) {
+            hurtStarMap.put(mob.id(), true);
+        }
         
         boolean wasInSession = session.containsKey(mob.id());
         boolean isReturned = returnedIds.contains(mob.id());
@@ -108,11 +113,6 @@ public final class MobOverlayState {
         addNeighborRing(mob.chunkX(), mob.chunkZ(), color);
     }
 
-    /**
-     * Completes a scan and detects a player leaving and returning to an entity.
-     * The distance is measured in the X/Z plane from the entity's last position
-     * while it is absent from the client world.
-     */
     public synchronized void finishLiveScan(int playerX, int playerZ) {
         for (Map.Entry<Integer, TrackedMob> entry : previousMobs.entrySet()) {
             if (!mobs.containsKey(entry.getKey()) && !entry.getValue().player()) {
@@ -190,6 +190,10 @@ public final class MobOverlayState {
 
     public synchronized boolean isReturned(int id, String type) {
         return returnedIds.contains(id) && matchesReturnedType(type);
+    }
+
+    public synchronized boolean isHurtStar(int id) {
+        return hurtStarMap.getOrDefault(id, false);
     }
 
     public synchronized Collection<TrackedMob> visibleSession() {
