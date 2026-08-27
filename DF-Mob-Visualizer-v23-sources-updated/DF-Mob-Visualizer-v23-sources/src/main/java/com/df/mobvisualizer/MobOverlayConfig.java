@@ -62,7 +62,6 @@ public final class MobOverlayConfig {
     // ===== ALERT =====
     public boolean alertEnabled = true;
     public String alertEntityTypes = "minecraft:zombie, minecraft:creeper, minecraft:skeleton";
-    // per-mob override: if a mob is present here, it will always be added to session when alerted
     public String alertSessionEntityTypes = "minecraft:zombie, minecraft:creeper, minecraft:skeleton";
     public int alertMode = 0;
     public int alertGap = 100_000;
@@ -80,7 +79,6 @@ public final class MobOverlayConfig {
     // ===== RETURNED =====
     public boolean returnedEnabled = true;
     public String returnedEntityTypes = "minecraft:zombie, minecraft:creeper, minecraft:skeleton";
-    // per-mob override for returned
     public String returnedSessionEntityTypes = "minecraft:zombie, minecraft:creeper, minecraft:skeleton";
     public double returnedDistanceBlocks = 86.0;
     public boolean returnedAddToSession = true;
@@ -103,7 +101,6 @@ public final class MobOverlayConfig {
     public boolean highlightRenamed = false;
     public boolean highlightPlayers = false;
     public boolean highlightAll = false;
-    // per-mob override for highlight
     public String highlightSessionEntityTypes = "";
     
     // ===== ПОДСВЕТКА (СТАРАЯ ДЛЯ СОВМЕСТИМОСТИ) =====
@@ -119,9 +116,7 @@ public final class MobOverlayConfig {
     public boolean centerReturnedMobs = true;
     public boolean centerHurtMobs = true;
     public boolean centerPlayers = false;
-    // list of entity types for centering
     public String centerEntityTypes = "";
-    // per-mob override for center
     public String centerSessionEntityTypes = "";
     
     // ===== ЦЕНТРИРОВАНИЕ (СТАРОЕ) =====
