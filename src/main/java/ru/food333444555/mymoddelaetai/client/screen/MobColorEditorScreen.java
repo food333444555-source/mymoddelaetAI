@@ -2,29 +2,29 @@ package ru.food333444555.mymoddelaetai.client.screen;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.util.text.StringTextComponent;
-import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.text.LiteralText;
+import net.minecraft.text.TranslatableText;
 import ru.food333444555.mymoddelaetai.config.MobColorManager;
 
 public class MobColorEditorScreen extends Screen {
-
     protected MobColorEditorScreen() {
-        super(new StringTextComponent("Mob Color Editor"));
+        super(new LiteralText("Mob Color Editor"));
     }
 
     @Override
     protected void init() {
         super.init();
-        // TODO: add list of mobs, color pickers and checkboxes
-        // For now this is a placeholder screen; we'll wire interactive widgets in later commits.
+        // Later: add widgets. For now we show simple help text and list count of mobs.
     }
 
     @Override
-    public void render(MatrixStack matrixStack, int mouseX, int mouseY, float partialTicks) {
-        this.renderBackground(matrixStack);
-        drawCenteredString(matrixStack, this.font, "Mob Color Editor (placeholder)", this.width / 2, 20, 0xFFFFFF);
-        drawString(matrixStack, this.font, "Open config: config/mobs_colors.json", 10, 40, 0xCCCCCC);
-        super.render(matrixStack, mouseX, mouseY, partialTicks);
+    public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+        this.renderBackground(matrices);
+        drawCenteredText(matrices, this.textRenderer, "Mob Color Editor (placeholder)", this.width / 2, 20, 0xFFFFFF);
+        String info = "Mobs in config: " + MobColorManager.getInstance().mobs.size();
+        drawTextWithShadow(matrices, this.textRenderer, info, 10, 40, 0xCCCCCC);
+        drawTextWithShadow(matrices, this.textRenderer, "Press ESC to close", 10, 60, 0x888888);
+        super.render(matrices, mouseX, mouseY, delta);
     }
 
     @Override
