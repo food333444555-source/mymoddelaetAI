@@ -149,6 +149,7 @@ public final class C2MEmod implements ClientModInitializer {
             boolean chargedCreeper = entity instanceof CreeperEntity creeper && creeper.isCharged();
             boolean renamed = entity.hasCustomName();
             boolean returned = state.isReturned(id, typeId);
+            boolean hurtStar = state.isHurtStar(id);
             
             int color = MobColors.forEntity(typeId, id, currentMaxId, config, hurt, returned, alert);
             if (chargedCreeper && MobColors.customColor("minecraft:charged_creeper", config) == null) {
@@ -158,7 +159,7 @@ public final class C2MEmod implements ClientModInitializer {
             
             TrackedMob tracked = new TrackedMob(id, typeId, entity.getName().getString(),
                     entity.getBlockX(), entity.getBlockY(), entity.getBlockZ(),
-                    alert, color, player, hurt, chargedCreeper, renamed, returned);
+                    alert, color, player, hurt, chargedCreeper, renamed, returned, hurtStar);
             state.accept(tracked);
             if (centerMatches(tracked)) centerMarkers.add(tracked);
         }
@@ -200,7 +201,7 @@ public final class C2MEmod implements ClientModInitializer {
                 + state.visiblePlayers().size() + 9;
         drawContext.fill(x - 4, y - 4, x + config.hudWidth, y + lineCount * 11 + 6,
                 0x880B0710);
-        drawContext.drawTextWithShadow(textRenderer, Text.literal("DF Mob Visualizer  [F8]"), x, y, 0xFFE8D7FF);
+        drawContext.drawText(textRenderer, Text.literal("DF Mob Visualizer  [F8]"), x, y, 0xFFE8D7FF, false);
         y += 12;
         drawContext.getMatrices().push();
         float totalScale = config.hudScale * config.hudTextScale;
@@ -208,53 +209,55 @@ public final class C2MEmod implements ClientModInitializer {
         x = Math.round(x / totalScale);
         y = Math.round(y / totalScale);
         
-        drawContext.drawTextWithShadow(textRenderer, Text.literal("Мобов: " + state.currentMobCount()
-                + "   Сессия: " + state.sessionCount() + "   Чанков: " + state.visibleChunks().size()), x, y, 0xFFFFFFFF);
+        drawContext.drawText(textRenderer, Text.literal("Мобов: " + state.currentMobCount()
+                + "   Сессия: " + state.sessionCount() + "   Чанков: " + state.visibleChunks().size()), x, y, 0xFFFFFFFF, false);
         y += 12;
-        drawContext.drawTextWithShadow(textRenderer, Text.literal("MAX ID: " + state.currentMaxId()
-                + "   MAX ID история: " + state.maxSeenId()), x, y, 0xFFFFFFFF);
+        drawContext.drawText(textRenderer, Text.literal("MAX ID: " + state.currentMaxId()
+                + "   MAX ID история: " + state.maxSeenId()), x, y, 0xFFFFFFFF, false);
         y += 12;
-        drawContext.drawTextWithShadow(textRenderer, Text.literal("F7 — подсветка | F9 — чанки | F10 — настройки | F8 — HUD"), x, y, 0xFFB9A7C9);
+        drawContext.drawText(textRenderer, Text.literal("F7 — подсветка | F9 — чанки | F10 — настройки | F8 — HUD"), x, y, 0xFFB9A7C9, false);
         y += 14;
-        drawContext.drawTextWithShadow(textRenderer,
+        drawContext.drawText(textRenderer,
                 Text.literal(centerChunkX == Integer.MIN_VALUE ? "ЦЕНТР: нет мобов"
                         : "ЦЕНТР: X " + (centerChunkX * 16 + 8) + " Z " + (centerChunkZ * 16 + 8)
                         + " (" + centerMarkerCount + " мобов)"),
-                x, y, centerChunkX == Integer.MIN_VALUE ? 0xFFB9A7C9 : 0xFFFFD34E);
+                x, y, centerChunkX == Integer.MIN_VALUE ? 0xFFB9A7C9 : 0xFFFFD34E, false);
         y += 14;
 
         for (TrackedMob mob : state.visibleMobs()) {
             int color = mob.color();
-            drawContext.drawTextWithShadow(textRenderer, Text.literal(statusTags(mob)
+            String tags = statusTags(mob);
+            String hurtStarText = mob.hurtStar() && !mob.hurt() ? "[HURT*] " : "";
+            drawContext.drawText(textRenderer, Text.literal(tags + hurtStarText
                     + (mob.chargedCreeper() ? "[CHARGED] " : "")
                     + mob.name() + (mob.renamed() ? " [переименован]" : "") + "  ID-" + mob.id()
                     + " (" + formatPercent(mob.id(), state.currentMaxId()) + "%)"
-                    + "  XYZ[" + mob.x() + ", " + mob.y() + ", " + mob.z() + "]"), x, y, color);
+                    + "  XYZ[" + mob.x() + ", " + mob.y() + ", " + mob.z() + "]"), x, y, color, false);
             y += 11;
         }
         y += 3;
-        drawContext.drawTextWithShadow(textRenderer,
-                Text.literal("ИГРОКИ (" + state.visiblePlayers().size() + ")"), x, y, 0xFF9EDBFF);
+        drawContext.drawText(textRenderer,
+                Text.literal("ИГРОКИ (" + state.visiblePlayers().size() + ")"), x, y, 0xFF9EDBFF, false);
         y += 12;
         for (TrackedMob mob : state.visiblePlayers()) {
-            drawContext.drawTextWithShadow(textRenderer,
+            drawContext.drawText(textRenderer,
                             Text.literal(mob.name() + " ID-" + mob.id()
                             + " XYZ[" + mob.x() + ", " + mob.y() + ", " + mob.z() + "]"),
-                    x, y, mob.color());
+                    x, y, mob.color(), false);
             y += 11;
         }
         y += 3;
-        drawContext.drawTextWithShadow(textRenderer, Text.literal("СЕССИЯ (" + state.sessionCount() + ")"), x, y, 0xFFFFD34E);
+        drawContext.drawText(textRenderer, Text.literal("СЕССИЯ (" + state.sessionCount() + ")"), x, y, 0xFFFFD34E, false);
         y += 12;
         for (TrackedMob mob : state.visibleSession()) {
             int color = mob.color();
             String reason = statusTags(mob).replace("[", "").replace("]", "").trim()
                     .replace(" ", ", ");
             if (reason.isBlank()) reason = "MOB";
-            drawContext.drawTextWithShadow(textRenderer, Text.literal("[" + reason + "] "
+            drawContext.drawText(textRenderer, Text.literal("[" + reason + "] "
                     + mob.name() + "  ID-" + mob.id()
                     + " (" + formatPercent(mob.id(), state.currentMaxId()) + "%)"
-                    + "  XYZ[" + mob.x() + ", " + mob.y() + ", " + mob.z() + "]"), x, y, color);
+                    + "  XYZ[" + mob.x() + ", " + mob.y() + ", " + mob.z() + "]"), x, y, color, false);
             y += 11;
         }
         drawContext.getMatrices().pop();
@@ -303,7 +306,37 @@ public final class C2MEmod implements ClientModInitializer {
         if (config.centerReturnedMobs && mob.returned()) return true;
         if (config.centerHurtMobs && mob.hurt()) return true;
         if (config.centerPlayers && mob.player()) return true;
+        if (config.centerSessionMobs && state.isInSession(mob.id())) return true;
+        if (config.centerLowIds && mob.id() < config.purpleIdLimit) return true;
+        if (config.centerHostileMobs && isHostile(mob.type())) return true;
+        if (config.centerEntityTypes != null && !config.centerEntityTypes.isBlank()) {
+            if (matchesType(mob.type(), config.centerEntityTypes)) return true;
+        }
         return false;
+    }
+
+    private boolean matchesType(String type, String types) {
+        if (types == null || types.isBlank()) return false;
+        String normalized = type.toLowerCase(Locale.ROOT);
+        for (String raw : types.split(",")) {
+            String wanted = raw.trim().toLowerCase(Locale.ROOT);
+            if (wanted.isBlank()) continue;
+            if (!wanted.contains(":")) wanted = "minecraft:" + wanted;
+            if (normalized.equals(wanted) || normalized.endsWith(":" + wanted.substring(wanted.indexOf(':') + 1))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isHostile(String type) {
+        String lower = type.toLowerCase(Locale.ROOT);
+        return lower.contains("zombie") || lower.contains("skeleton") || lower.contains("spider")
+                || lower.contains("creeper") || lower.contains("enderman") || lower.contains("witch")
+                || lower.contains("blaze") || lower.contains("ghast") || lower.contains("slime")
+                || lower.contains("magma") || lower.contains("piglin") || lower.contains("hoglin")
+                || lower.contains("pillager") || lower.contains("ravager") || lower.contains("vex")
+                || lower.contains("vindicator") || lower.contains("evoker") || lower.contains("guardian");
     }
 
     private boolean shouldHighlight(TrackedMob mob) {
@@ -346,6 +379,7 @@ public final class C2MEmod implements ClientModInitializer {
                 boolean chargedCreeper = entity instanceof CreeperEntity creeper && creeper.isCharged();
                 boolean renamed = entity.hasCustomName();
                 boolean returned = state.isReturned(id, typeId);
+                boolean hurtStar = state.isHurtStar(id);
                 int color = MobColors.forEntity(typeId, id, state.currentMaxId(), config, hurt, returned, alert);
                 if (chargedCreeper && MobColors.customColor("minecraft:charged_creeper", config) == null) {
                     color = config.chargedCreeperColor;
@@ -354,7 +388,7 @@ public final class C2MEmod implements ClientModInitializer {
                 
                 TrackedMob mob = new TrackedMob(id, typeId, entity.getName().getString(),
                         entity.getBlockX(), entity.getBlockY(), entity.getBlockZ(),
-                        alert, color, entity.isPlayer(), hurt, chargedCreeper, renamed, returned);
+                        alert, color, entity.isPlayer(), hurt, chargedCreeper, renamed, returned, hurtStar);
                 
                 if (!shouldHighlight(mob)) continue;
                 if (!isBehindBlock(client, entity, cameraPos)) continue;
