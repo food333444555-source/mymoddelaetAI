@@ -49,16 +49,17 @@ public final class MobSettingsScreenV2 extends Screen {
         int left = width / 2 - 155;
         if (page.equals("main")) {
             button(left, 55, 310, "Общие настройки", b -> open("general"));
-            button(left, 80, 310, "HUD и отображение", b -> open("hud"));
-            button(left, 105, 310, "ALERT мобы", b -> open("alert"));
-            button(left, 130, 310, "RETURNED мобы", b -> open("returned"));
-            button(left, 155, 310, "HURT (раненые)", b -> open("hurt"));
-            button(left, 180, 310, "Центрирование", b -> open("center"));
-            button(left, 205, 310, "Цвета мобов", b -> open("colors"));
-            button(left, 230, 310, "Клавиши / бинды", b -> open("keys"));
-            button(left, 255, 310, "Цвета по ID и проценту", b -> open("idcolors"));
-            button(left, 280, 310, "Очистка данных", b -> open("cleanup"));
-            button(left, 305, 310, "Готово", b -> close());
+            button(left, 80, 310, "HUD — внешний вид", b -> open("hud_style"));
+            button(left, 105, 310, "HUD — содержимое", b -> open("hud_content"));
+            button(left, 130, 310, "ALERT мобы", b -> open("alert"));
+            button(left, 155, 310, "RETURNED мобы", b -> open("returned"));
+            button(left, 180, 310, "HURT (раненые)", b -> open("hurt"));
+            button(left, 205, 310, "Центрирование / Центр", b -> open("center"));
+            button(left, 230, 310, "Цвета мобов", b -> open("colors"));
+            button(left, 255, 310, "Клавиши / бинды", b -> open("keys"));
+            button(left, 280, 310, "Цвета по ID и проценту", b -> open("idcolors"));
+            button(left, 305, 310, "Очистка данных", b -> open("cleanup"));
+            button(left, 330, 310, "Готово", b -> close());
             return;
         }
         button(left, 35, 90, "← Разделы", b -> open("main"));
@@ -77,8 +78,10 @@ public final class MobSettingsScreenV2 extends Screen {
             buildGeneral(left);
         } else if (page.equals("idcolors")) {
             buildIdColors(left);
-        } else if (page.equals("hud")) {
-            buildHud(left);
+        } else if (page.equals("hud_style")) {
+            buildHudStyle(left);
+        } else if (page.equals("hud_content")) {
+            buildHudContent(left);
         } else if (page.equals("colors")) {
             buildColors(left);
         } else {
@@ -180,13 +183,141 @@ public final class MobSettingsScreenV2 extends Screen {
     }
 
     private void buildCenter(int left) {
-        toggle(left, 65, "ALERT мобы", config.centerAlertMobs, () -> config.centerAlertMobs = !config.centerAlertMobs);
-        toggle(left, 90, "RETURNED мобы", config.centerReturnedMobs, () -> config.centerReturnedMobs = !config.centerReturnedMobs);
-        toggle(left, 115, "HURT мобы", config.centerHurtMobs, () -> config.centerHurtMobs = !config.centerHurtMobs);
-        toggle(left, 140, "Игроки", config.centerPlayers, () -> config.centerPlayers = !config.centerPlayers);
-        toggle(left, 165, "СЕССИЯ", config.centerSessionMobs, () -> config.centerSessionMobs = !config.centerSessionMobs);
-        toggle(left, 190, "НИЗКИЙ ID", config.centerLowIds, () -> config.centerLowIds = !config.centerLowIds);
-        toggle(left, 215, "ВРАЖДЕБНЫЕ", config.centerHostileMobs, () -> config.centerHostileMobs = !config.centerHostileMobs);
+        toggle(left, 65, "Центр включён", config.centerEnabled, () -> config.centerEnabled = !config.centerEnabled);
+        toggle(left, 90, "ALERT мобы", config.centerAlertMobs, () -> config.centerAlertMobs = !config.centerAlertMobs);
+        toggle(left, 115, "RETURNED мобы", config.centerReturnedMobs, () -> config.centerReturnedMobs = !config.centerReturnedMobs);
+        toggle(left, 140, "HURT мобы", config.centerHurtMobs, () -> config.centerHurtMobs = !config.centerHurtMobs);
+        toggle(left, 165, "Игроки", config.centerPlayers, () -> config.centerPlayers = !config.centerPlayers);
+        toggle(left, 190, "СЕССИЯ", config.centerSessionMobs, () -> config.centerSessionMobs = !config.centerSessionMobs);
+        toggle(left, 215, "НИЗКИЙ ID", config.centerLowIds, () -> config.centerLowIds = !config.centerLowIds);
+        toggle(left, 240, "ВРАЖДЕБНЫЕ", config.centerHostileMobs, () -> config.centerHostileMobs = !config.centerHostileMobs);
+
+        button(left, 270, 310, "Таймаут: " + config.centerTimeoutSeconds + " сек",
+                b -> { config.centerTimeoutSeconds = nextTimeout(config.centerTimeoutSeconds); save(); init(); });
+        button(left, 295, 310, "Очистка по расстоянию: " + config.centerClearDistanceChunks + " чанков",
+                b -> { config.centerClearDistanceChunks = nextClearDist(config.centerClearDistanceChunks); save(); init(); });
+        button(left, 320, 310, "Мин. маркеров: " + config.centerMinMarkers,
+                b -> { config.centerMinMarkers = nextMinMarkers(config.centerMinMarkers); save(); init(); });
+        button(left, 345, 310, "Макс. разброс: " + config.centerMaxSpreadBlocks + " блоков",
+                b -> { config.centerMaxSpreadBlocks = nextMaxSpread(config.centerMaxSpreadBlocks); save(); init(); });
+    }
+
+    private void buildHudStyle(int left) {
+        toggle(left, 65, "Фон HUD", config.hudShowBackground, () -> config.hudShowBackground = !config.hudShowBackground);
+        toggle(left, 90, "Системный шрифт", config.hudUseSystemFont, () -> config.hudUseSystemFont = !config.hudUseSystemFont);
+        toggle(left, 115, "Тень текста", config.hudTextShadow, () -> config.hudTextShadow = !config.hudTextShadow);
+        toggle(left, 140, "Индикаторы функций", config.hudShowIndicators, () -> config.hudShowIndicators = !config.hudShowIndicators);
+
+        button(left, 165, 150, "Прозрачность фона: " + percent(config.hudBackgroundOpacity),
+                b -> { config.hudBackgroundOpacity = nextOpacity(config.hudBackgroundOpacity); save(); init(); });
+        button(left + 160, 165, 150, "Цвет фона: " + hex(config.hudBackgroundColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Фон HUD", config.hudBackgroundColor | 0xFF000000, color -> {
+                    config.hudBackgroundColor = color & 0xFFFFFF;
+                    save();
+                    init();
+                })));
+
+        button(left, 190, 150, "Размер шрифта: " + String.format(Locale.ROOT, "%.1f", config.hudSystemFontSize),
+                b -> { config.hudSystemFontSize = nextFontSize(config.hudSystemFontSize); save(); init(); });
+        button(left + 160, 190, 150, "Масштаб HUD: " + String.format(Locale.ROOT, "%.1fx", config.hudScale),
+                b -> { config.hudScale = nextHudScale(config.hudScale); save(); init(); });
+
+        button(left, 215, 150, "Масштаб текста: " + String.format(Locale.ROOT, "%.1fx", config.hudTextScale),
+                b -> { config.hudTextScale = nextHudScale(config.hudTextScale); save(); init(); });
+        button(left + 160, 215, 150, "Ширина окна: " + config.hudWidth,
+                b -> { config.hudWidth = nextHudWidth(config.hudWidth); save(); init(); });
+
+        button(left, 240, 310, "Сбросить позицию HUD", b -> { config.hudX = 8; config.hudY = 8; save(); });
+        button(left, 265, 310, "← Назад к разделам", b -> open("main"));
+    }
+
+    private void buildHudContent(int left) {
+        button(left, 65, 150, "Цвет заголовка: " + hex(config.hudTitleColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Заголовок", config.hudTitleColor, color -> {
+                    config.hudTitleColor = color;
+                    save();
+                    init();
+                })));
+        button(left + 160, 65, 150, "Цвет инфо: " + hex(config.hudInfoColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Инфо", config.hudInfoColor, color -> {
+                    config.hudInfoColor = color;
+                    save();
+                    init();
+                })));
+
+        button(left, 90, 150, "Цвет подсказок: " + hex(config.hudHintColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Подсказки", config.hudHintColor, color -> {
+                    config.hudHintColor = color;
+                    save();
+                    init();
+                })));
+        button(left + 160, 90, 150, "Цвет центра: " + hex(config.hudCenterColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Центр", config.hudCenterColor, color -> {
+                    config.hudCenterColor = color;
+                    save();
+                    init();
+                })));
+
+        button(left, 115, 150, "Цвет индик. вкл: " + hex(config.hudIndicatorColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Индикатор ВКЛ", config.hudIndicatorColor, color -> {
+                    config.hudIndicatorColor = color;
+                    save();
+                    init();
+                })));
+        button(left + 160, 115, 150, "Цвет индик. выкл: " + hex(config.hudIndicatorOffColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Индикатор ВЫКЛ", config.hudIndicatorOffColor, color -> {
+                    config.hudIndicatorOffColor = color;
+                    save();
+                    init();
+                })));
+
+        button(left, 145, 150, "Цвет ALERT тега: " + hex(config.hudAlertColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "ALERT тег", config.hudAlertColor, color -> {
+                    config.hudAlertColor = color;
+                    save();
+                    init();
+                })));
+        button(left + 160, 145, 150, "Цвет HURT тега: " + hex(config.hudHurtColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "HURT тег", config.hudHurtColor, color -> {
+                    config.hudHurtColor = color;
+                    save();
+                    init();
+                })));
+
+        button(left, 170, 150, "Цвет RETURNED тега: " + hex(config.hudReturnedColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "RETURNED тег", config.hudReturnedColor, color -> {
+                    config.hudReturnedColor = color;
+                    save();
+                    init();
+                })));
+        button(left + 160, 170, 150, "Цвет CHARGED тега: " + hex(config.hudChargedColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "CHARGED тег", config.hudChargedColor, color -> {
+                    config.hudChargedColor = color;
+                    save();
+                    init();
+                })));
+
+        button(left, 195, 150, "Цвет RENAMED тега: " + hex(config.hudRenamedColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "RENAMED тег", config.hudRenamedColor, color -> {
+                    config.hudRenamedColor = color;
+                    save();
+                    init();
+                })));
+        button(left + 160, 195, 150, "Цвет игроков: " + hex(config.hudPlayerColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Игроки", config.hudPlayerColor, color -> {
+                    config.hudPlayerColor = color;
+                    save();
+                    init();
+                })));
+
+        button(left, 220, 310, "Цвет сессии: " + hex(config.hudSessionColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Сессия", config.hudSessionColor, color -> {
+                    config.hudSessionColor = color;
+                    save();
+                    init();
+                })));
+
+        button(left, 250, 310, "← Назад к разделам", b -> open("main"));
     }
 
     private void buildKeys(int left) {
@@ -233,37 +364,6 @@ public final class MobSettingsScreenV2 extends Screen {
         });
     }
 
-    private void buildHud(int left) {
-        toggle(left, 65, "HUD", config.showHud, () -> config.showHud = !config.showHud);
-        toggle(left, 90, "Карта чанков", config.showChunkOverlay,
-                () -> config.showChunkOverlay = !config.showChunkOverlay);
-        toggle(left, 115, "Заливка чанков", config.showChunkFill,
-                () -> config.showChunkFill = !config.showChunkFill);
-        toggle(left, 140, "Тень текста HUD", config.hudTextShadow,
-                () -> config.hudTextShadow = !config.hudTextShadow);
-        toggle(left, 165, "Центр по сессии", config.centerBySession,
-                () -> config.centerBySession = !config.centerBySession);
-
-        button(left, 190, 150, "Высота слоя: " + config.chunkYOffset + " блоков",
-                b -> MinecraftClient.getInstance().setScreen(new HeightInputScreen(this, config, true)));
-
-        button(left + 160, 190, 150, "Толщина: " + config.chunkHeight + " блок(ов)",
-                b -> MinecraftClient.getInstance().setScreen(new HeightInputScreen(this, config, false)));
-
-        button(left, 215, 150, "Прозрачность фона: " + percent(config.hudBackgroundOpacity),
-                b -> { config.hudBackgroundOpacity = nextOpacity(config.hudBackgroundOpacity); save(); init(); });
-        button(left + 160, 215, 150, "Прозрачность чанков: " + percent(config.chunkOpacity),
-                b -> { config.chunkOpacity = nextOpacity(config.chunkOpacity); save(); init(); });
-
-        button(left, 240, 310, "Усиление: " + String.format(Locale.ROOT, "%.1fx", config.chunkFillStrength),
-                b -> { config.chunkFillStrength = nextStrength(config.chunkFillStrength); save(); init(); });
-        button(left, 265, 310, "Граница: " + percent(config.chunkBorderOpacity),
-                b -> { config.chunkBorderOpacity = nextOpacity(config.chunkBorderOpacity); save(); init(); });
-        toggle(left, 290, "Игроки в HUD", config.showPlayers, () -> config.showPlayers = !config.showPlayers);
-        button(left, 315, 310, "Сбросить позицию HUD", b -> { config.hudX = 8; config.hudY = 8; save(); });
-        button(left, 340, 310, "← Назад к разделам", b -> open("main"));
-    }
-
     private void buildColors(int left) {
         button(left, 65, 310, "Открыть список всех сущностей", b -> MinecraftClient.getInstance().setScreen(
                 new EntityPickerScreen(this, config, EntityPickerScreen.Mode.COLORS)));
@@ -281,10 +381,28 @@ public final class MobSettingsScreenV2 extends Screen {
     }
 
     private static float nextOpacity(float value) {
-        float[] values = {0.15f, 0.30f, 0.45f, 0.60f, 0.75f, 0.90f, 1.0f};
+        float[] values = {0.0f, 0.15f, 0.30f, 0.45f, 0.60f, 0.75f, 0.90f, 1.0f};
         for (float candidate : values) {
             if (value < candidate - 0.001f) return candidate;
         }
+        return values[0];
+    }
+
+    private static float nextFontSize(float value) {
+        float[] values = {6.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 16.0f, 18.0f, 20.0f, 24.0f};
+        for (float v : values) if (value < v - 0.001f) return v;
+        return values[0];
+    }
+
+    private static float nextHudScale(float value) {
+        float[] values = {0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f, 1.75f, 2.0f};
+        for (float v : values) if (value < v - 0.001f) return v;
+        return values[0];
+    }
+
+    private static int nextHudWidth(int value) {
+        int[] values = {220, 280, 320, 360, 400, 420, 480, 520, 560, 600, 700, 800, 1000, 1200};
+        for (int v : values) if (value < v) return v;
         return values[0];
     }
 
@@ -293,6 +411,30 @@ public final class MobSettingsScreenV2 extends Screen {
         for (float candidate : values) {
             if (value < candidate - 0.001f) return candidate;
         }
+        return values[0];
+    }
+
+    private static int nextTimeout(int value) {
+        int[] values = {10, 20, 30, 45, 60, 90, 120, 180, 300};
+        for (int v : values) if (value < v) return v;
+        return values[0];
+    }
+
+    private static int nextClearDist(int value) {
+        int[] values = {1, 2, 4, 6, 8, 12, 16, 24, 32};
+        for (int v : values) if (value < v) return v;
+        return values[0];
+    }
+
+    private static int nextMinMarkers(int value) {
+        int[] values = {1, 2, 3, 4, 5, 7, 10, 15, 20};
+        for (int v : values) if (value < v) return v;
+        return values[0];
+    }
+
+    private static int nextMaxSpread(int value) {
+        int[] values = {16, 32, 64, 96, 128, 160, 192, 256, 384, 512};
+        for (int v : values) if (value < v) return v;
         return values[0];
     }
 
@@ -360,10 +502,11 @@ public final class MobSettingsScreenV2 extends Screen {
             case "alert" -> "ALERT мобы";
             case "returned" -> "RETURNED мобы";
             case "hurt" -> "HURT (раненые)";
-            case "center" -> "Центрирование";
+            case "center" -> "Центрирование / Центр";
             case "keys" -> "Настройка клавиш";
             case "general" -> "Общие настройки";
-            case "hud" -> "HUD и отображение";
+            case "hud_style" -> "HUD — внешний вид";
+            case "hud_content" -> "HUD — цвета и содержимое";
             case "idcolors" -> "Цвета по ID и проценту";
             case "colors" -> "Цвета мобов";
             default -> "Очистка данных";
