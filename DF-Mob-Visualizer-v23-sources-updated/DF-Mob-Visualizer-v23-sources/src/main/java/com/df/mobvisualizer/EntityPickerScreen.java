@@ -30,7 +30,8 @@ public final class EntityPickerScreen extends Screen {
         ALERT_SESSION,
         RETURNED_SESSION,
         ALERT_TYPES,
-        RETURNED_TYPES
+        RETURNED_TYPES,
+        SESSION_TYPES
     }
 
     private static final int LIST_TOP = 88;
@@ -50,7 +51,7 @@ public final class EntityPickerScreen extends Screen {
         this.parent = parent;
         this.config = config;
         this.mode = mode;
-        this.entities = buildEntityCatalog(mode == Mode.COLORS);
+        this.entities = buildEntityCatalog(mode == Mode.COLORS || mode == Mode.SESSION_TYPES);
     }
 
     @Override
@@ -69,21 +70,20 @@ public final class EntityPickerScreen extends Screen {
         });
         addDrawableChild(searchField);
 
-        if (mode != Mode.COLORS) {
+        if (mode != Mode.COLORS && mode != Mode.SESSION_TYPES) {
             addDrawableChild(ButtonWidget.builder(Text.literal("Выбрать всех"), button -> {
                 setSelection(Set.of());
                 save();
             }).dimensions(left, 64, 140, 20).build());
+        }
+        if (mode != Mode.COLORS) {
             addDrawableChild(ButtonWidget.builder(Text.literal("Снять всех"), button -> {
                 setNoneSelection();
                 save();
             }).dimensions(left + 150, 64, 140, 20).build());
-            addDrawableChild(ButtonWidget.builder(Text.literal("Назад"), button -> close())
-                    .dimensions(left + 300, 64, 140, 20).build());
-        } else {
-            addDrawableChild(ButtonWidget.builder(Text.literal("Назад"), button -> close())
-                    .dimensions(left + 300, 64, 140, 20).build());
         }
+        addDrawableChild(ButtonWidget.builder(Text.literal("Назад"), button -> close())
+                .dimensions(left + 300, 64, 140, 20).build());
     }
 
     @Override
@@ -92,11 +92,12 @@ public final class EntityPickerScreen extends Screen {
         int left = width / 2 - 220;
         context.drawCenteredTextWithShadow(textRenderer, Text.literal(titleFor(mode)),
                 width / 2, 15, 0xFFE8D7FF);
-        context.drawTextWithShadow(textRenderer,
-                Text.literal(mode == Mode.COLORS
-                        ? "Нажми на сущность, чтобы открыть редактор цвета"
-                        : "Галочка означает: тип отслеживается"),
-                left, 74, 0xFFB9A7C9);
+        String hint = mode == Mode.COLORS
+                ? "Нажми на сущность, чтобы открыть редактор цвета"
+                : mode == Mode.SESSION_TYPES
+                ? "Галочка = моб всегда закрепляется в сессии"
+                : "Галочка означает: тип отслеживается";
+        context.drawTextWithShadow(textRenderer, Text.literal(hint), left, 74, 0xFFB9A7C9);
 
         List<EntityEntry> matches = filteredEntities();
         int rows = visibleRows();
@@ -105,7 +106,7 @@ public final class EntityPickerScreen extends Screen {
         }
 
         Set<String> selected = mode == Mode.COLORS ? Set.of() : selectedTypes();
-        boolean allSelected = mode != Mode.COLORS && isAllSelected();
+        boolean allSelected = mode != Mode.COLORS && mode != Mode.SESSION_TYPES && isAllSelected();
         boolean noneSelected = mode != Mode.COLORS && isNoneSelected();
         for (int row = 0; row < rows; row++) {
             int index = scrollOffset + row;
@@ -163,7 +164,7 @@ public final class EntityPickerScreen extends Screen {
             if (isAllSelected()) selected.addAll(allEntityIds());
             if (isNoneSelected()) selected.clear();
             if (!selected.remove(entry.id)) selected.add(entry.id);
-            if (selected.size() == allEntityIds().size()) setSelection(Set.of());
+            if (mode != Mode.SESSION_TYPES && selected.size() == allEntityIds().size()) setSelection(Set.of());
             else if (selected.isEmpty()) setNoneSelection();
             else setSelection(selected);
             save();
@@ -200,6 +201,7 @@ public final class EntityPickerScreen extends Screen {
             case RETURNED_SESSION -> config.returnedSessionEntityTypes;
             case ALERT_TYPES -> config.alertEntityTypes;
             case RETURNED_TYPES -> config.returnedEntityTypes;
+            case SESSION_TYPES -> config.pinnedEntityTypes;
             default -> "";
         };
         if (raw == null || raw.isBlank() || raw.trim().equalsIgnoreCase(NONE_SELECTION)) return Set.of();
@@ -220,6 +222,7 @@ public final class EntityPickerScreen extends Screen {
             case RETURNED_SESSION -> config.returnedSessionEntityTypes = value;
             case ALERT_TYPES -> config.alertEntityTypes = value;
             case RETURNED_TYPES -> config.returnedEntityTypes = value;
+            case SESSION_TYPES -> config.pinnedEntityTypes = value;
         }
     }
 
@@ -229,11 +232,12 @@ public final class EntityPickerScreen extends Screen {
             case RETURNED_SESSION -> config.returnedSessionEntityTypes = NONE_SELECTION;
             case ALERT_TYPES -> config.alertEntityTypes = NONE_SELECTION;
             case RETURNED_TYPES -> config.returnedEntityTypes = NONE_SELECTION;
+            case SESSION_TYPES -> config.pinnedEntityTypes = NONE_SELECTION;
         }
     }
 
     private boolean isAllSelected() {
-        if (mode == Mode.ALERT_TYPES || mode == Mode.RETURNED_TYPES) return false;
+        if (mode == Mode.ALERT_TYPES || mode == Mode.RETURNED_TYPES || mode == Mode.SESSION_TYPES) return false;
         String raw = switch (mode) {
             case ALERT_SESSION -> config.alertSessionEntityTypes;
             case RETURNED_SESSION -> config.returnedSessionEntityTypes;
@@ -248,6 +252,7 @@ public final class EntityPickerScreen extends Screen {
             case RETURNED_SESSION -> config.returnedSessionEntityTypes;
             case ALERT_TYPES -> config.alertEntityTypes;
             case RETURNED_TYPES -> config.returnedEntityTypes;
+            case SESSION_TYPES -> config.pinnedEntityTypes;
             default -> "";
         };
         return raw != null && raw.trim().equalsIgnoreCase(NONE_SELECTION);
@@ -275,6 +280,7 @@ public final class EntityPickerScreen extends Screen {
             case RETURNED_SESSION -> "RETURNED: мобы в сессию";
             case ALERT_TYPES -> "ALERT: выбор мобов";
             case RETURNED_TYPES -> "RETURNED: выбор мобов";
+            case SESSION_TYPES -> "Закрепить в сессии";
         };
     }
 
