@@ -15,7 +15,7 @@ public final class MobOverlayConfig {
     public boolean enabled = false;
     public int scanIntervalTicks = 5;
     public double renderDistanceChunks = 12.0;
-    
+
     // ===== HUD =====
     public boolean showHud = false;
     public float hudScale = 1.0f;
@@ -26,7 +26,19 @@ public final class MobOverlayConfig {
     public int hudSortMode = 0;
     public boolean showPlayers = true;
     public boolean includeOtherEntities = false;
-    
+    public float hudBackgroundOpacity = 0.53f;
+    public boolean hudTextShadow = true;
+    public boolean centerBySession = false;
+
+    // ===== ЦВЕТА ТЕГОВ В HUD =====
+    public int hudAlertColor = 0xFFFFD34E;
+    public int hudHurtColor = 0xFFFF3030;
+    public int hudReturnedColor = 0xFFFFD34E;
+    public int hudChargedColor = 0xFFB36BFF;
+    public int hudRenamedColor = 0xFFFFFFFF;
+    public int hudPlayerColor = 0xFF9EDBFF;
+    public int hudSessionColor = 0xFFFFD34E;
+
     // ===== ЧАНКИ =====
     public boolean showChunkOverlay = false;
     public boolean showChunkFill = true;
@@ -37,7 +49,7 @@ public final class MobOverlayConfig {
     public String chunkColorRules = "id<50=#C855E8FF;id<10000=#FF7A0000;percent<5=#FF7A0000;percent<20=#FFFF2020;percent<30=#FFFF7A00;percent<50=#FFFFB000";
     public double chunkYOffset = 0.5;
     public double chunkHeight = 1.0;
-    
+
     // ===== ЦВЕТА ПО ID =====
     public int purpleIdLimit = 10_000;
     public int purpleColor = 0xC855E8FF;
@@ -51,17 +63,18 @@ public final class MobOverlayConfig {
     public double orangePercent = 50.0;
     public String idColorRules = "id<=10001=#C855E8FF";
     public String percentColorRules = "percent<30=#FFFF2020;percent<50=#FFFFB000";
-    
+
     // ===== ИНДИВИДУАЛЬНЫЕ ЦВЕТА =====
     public String customMobColors = "";
     public int chargedCreeperColor = 0xFFB36BFF;
     public int alertColor = 0xFFFFD34E;
     public int hurtColor = 0xFFFF3030;
     public int hurtStarColor = 0xFFFFAA00;
-    
+    public int returnedColor = 0xFFFFD34E;
+
     // ===== ALERT =====
     public boolean alertEnabled = true;
-    public String alertEntityTypes = "minecraft:zombie, minecraft:creeper, minecraft:skeleton";
+    public String alertEntityTypes = "";
     public String alertSessionEntityTypes = "minecraft:zombie, minecraft:creeper, minecraft:skeleton";
     public int alertMode = 0;
     public int alertGap = 100_000;
@@ -69,48 +82,40 @@ public final class MobOverlayConfig {
     public boolean alertAddToSession = true;
     public boolean alertCenter = true;
     public boolean alertHighlight = true;
-    
+
     // ===== HURT =====
     public boolean hurtEnabled = true;
     public boolean hurtAddToSession = true;
     public boolean hurtCenter = true;
     public boolean hurtHighlight = true;
-    
+
     // ===== RETURNED =====
     public boolean returnedEnabled = true;
-    public String returnedEntityTypes = "minecraft:zombie, minecraft:creeper, minecraft:skeleton";
+    public String returnedEntityTypes = "";
     public String returnedSessionEntityTypes = "minecraft:zombie, minecraft:creeper, minecraft:skeleton";
     public double returnedDistanceBlocks = 86.0;
     public boolean returnedAddToSession = true;
     public boolean returnedCenter = true;
     public boolean returnedHighlight = true;
-    
+
     // ===== СЕССИЯ =====
     public boolean sessionEnabled = true;
     public boolean persistSession = true;
     public String pinnedEntityTypes = "";
     public boolean pinHurtMobs = true;
     public boolean pinLowIds = true;
-    
-    // ===== ПОДСВЕТКА (НОВАЯ) =====
-    public boolean seeThroughMobs = false;
-    public boolean highlightHurt = true;
-    public boolean highlightAlert = true;
-    public boolean highlightReturned = true;
-    public boolean highlightCharged = true;
-    public boolean highlightRenamed = false;
-    public boolean highlightPlayers = false;
-    public boolean highlightAll = false;
-    public String highlightSessionEntityTypes = "";
-    
-    // ===== ПОДСВЕТКА (СТАРАЯ ДЛЯ СОВМЕСТИМОСТИ) =====
+
+    // ===== ПОДСВЕТКА (УДАЛЕНО — БЫЛ ЧИТ) =====
+    // Все поля seeThroughMobs и highlight* удалены
+
+    // ===== СТАРЫЕ ПОЛЯ ДЛЯ СОВМЕСТИМОСТИ (БОЛЬШЕ НЕ ИСПОЛЬЗУЮТСЯ) =====
     public boolean highlightSessionMobs = false;
     public boolean highlightAlertMobs = false;
     public boolean highlightLowIds = false;
     public boolean highlightHurtMobs = false;
     public boolean highlightHostileMobs = false;
     public String highlightEntityTypes = "";
-    
+
     // ===== ЦЕНТРИРОВАНИЕ =====
     public boolean centerAlertMobs = true;
     public boolean centerReturnedMobs = true;
@@ -118,44 +123,33 @@ public final class MobOverlayConfig {
     public boolean centerPlayers = false;
     public String centerEntityTypes = "";
     public String centerSessionEntityTypes = "";
-    
+
     // ===== ЦЕНТРИРОВАНИЕ (СТАРОЕ) =====
     public boolean centerSessionMobs = true;
     public boolean centerLowIds = true;
     public boolean centerHostileMobs = true;
-    
+
     // ===== ПРОЦЕНТНЫЕ ЛИМИТЫ =====
     public double sessionPercentLimit = 10.0;
-    public double highlightPercentLimit = 30.0;
     public double centerPercentLimit = 20.0;
-    
+
     // ===== СТАРЫЕ ПОЛЯ =====
     public boolean hostileOnly = false;
     public boolean pinHostileMobs = false;
     public boolean pinPlayers = true;
-    
-    // ===== ЦВЕТА ДЛЯ ПОДСВЕТКИ =====
-    public int highlightHurtColor = 0xFFFF3030;
-    public int highlightAlertColor = 0xFFC855E8;
-    public int highlightReturnedColor = 0xFFFFD34E;
-    public int highlightChargedColor = 0xFFB36BFF;
-    public int highlightRenamedColor = 0xFFFFFFFF;
-    public int highlightPlayerColor = 0xFF55CCFF;
-    
+
     // ===== КЛАВИШИ =====
     public int hudKey = 297;
     public int chunksKey = 298;
-    public int mobHighlightsKey = 296;
     public int settingsKey = 299;
     public int clearSessionKey = 294;
     public int clearChunksKey = 295;
     public int hudScanCode = 0;
     public int chunksScanCode = 0;
-    public int mobHighlightsScanCode = 0;
     public int settingsScanCode = 0;
     public int clearSessionScanCode = 0;
     public int clearChunksScanCode = 0;
-    
+
     // ===== JSON =====
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir()
@@ -191,6 +185,7 @@ public final class MobOverlayConfig {
         hudWidth = Math.max(220, Math.min(1200, hudWidth));
         hudX = Math.max(0, hudX);
         hudY = Math.max(0, hudY);
+        hudBackgroundOpacity = Math.max(0.0f, Math.min(1.0f, hudBackgroundOpacity));
         scanIntervalTicks = Math.max(1, Math.min(100, scanIntervalTicks));
         purpleIdLimit = Math.max(0, purpleIdLimit);
         darkRedPercent = clampPercent(darkRedPercent);
@@ -202,7 +197,6 @@ public final class MobOverlayConfig {
         returnedDistanceBlocks = Math.max(1.0, Math.min(100000.0, returnedDistanceBlocks));
         alertMode = alertMode == 1 ? 1 : 0;
         sessionPercentLimit = clampPercent(sessionPercentLimit);
-        highlightPercentLimit = clampPercent(highlightPercentLimit);
         centerPercentLimit = clampPercent(centerPercentLimit);
         if (alertEntityTypes == null) alertEntityTypes = "";
         if (returnedEntityTypes == null) returnedEntityTypes = "";
@@ -215,7 +209,6 @@ public final class MobOverlayConfig {
         if (centerEntityTypes == null) centerEntityTypes = "";
         if (alertSessionEntityTypes == null) alertSessionEntityTypes = "";
         if (returnedSessionEntityTypes == null) returnedSessionEntityTypes = "";
-        if (highlightSessionEntityTypes == null) highlightSessionEntityTypes = "";
         if (centerSessionEntityTypes == null) centerSessionEntityTypes = "";
     }
 
