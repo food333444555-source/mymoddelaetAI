@@ -21,10 +21,6 @@ import java.util.stream.Collectors;
 
 /**
  * Shared entity browser used by custom colors and session filters.
- *
- * The empty filter value deliberately means "all entities" for backwards
- * compatibility with older config files. When the user unchecks one row, the
- * implicit all-set is materialized so individual choices can be edited.
  */
 public final class EntityPickerScreen extends Screen {
     private static final String NONE_SELECTION = "__NONE__";
@@ -32,7 +28,9 @@ public final class EntityPickerScreen extends Screen {
     public enum Mode {
         COLORS,
         ALERT_SESSION,
-        RETURNED_SESSION
+        RETURNED_SESSION,
+        ALERT_TYPES,
+        RETURNED_TYPES
     }
 
     private static final int LIST_TOP = 88;
@@ -97,7 +95,7 @@ public final class EntityPickerScreen extends Screen {
         context.drawTextWithShadow(textRenderer,
                 Text.literal(mode == Mode.COLORS
                         ? "Нажми на сущность, чтобы открыть редактор цвета"
-                        : "Галочка означает: тип может попасть в сессию"),
+                        : "Галочка означает: тип отслеживается"),
                 left, 74, 0xFFB9A7C9);
 
         List<EntityEntry> matches = filteredEntities();
@@ -197,9 +195,13 @@ public final class EntityPickerScreen extends Screen {
     }
 
     private Set<String> selectedTypes() {
-        String raw = mode == Mode.ALERT_SESSION
-                ? config.alertSessionEntityTypes
-                : config.returnedSessionEntityTypes;
+        String raw = switch (mode) {
+            case ALERT_SESSION -> config.alertSessionEntityTypes;
+            case RETURNED_SESSION -> config.returnedSessionEntityTypes;
+            case ALERT_TYPES -> config.alertEntityTypes;
+            case RETURNED_TYPES -> config.returnedEntityTypes;
+            default -> "";
+        };
         if (raw == null || raw.isBlank() || raw.trim().equalsIgnoreCase(NONE_SELECTION)) return Set.of();
         return Arrays.stream(raw.split(","))
                 .map(value -> normalizeId(value))
@@ -213,26 +215,41 @@ public final class EntityPickerScreen extends Screen {
                 .filter(item -> !item.isBlank())
                 .sorted()
                 .collect(Collectors.joining(", "));
-        if (mode == Mode.ALERT_SESSION) config.alertSessionEntityTypes = value;
-        if (mode == Mode.RETURNED_SESSION) config.returnedSessionEntityTypes = value;
+        switch (mode) {
+            case ALERT_SESSION -> config.alertSessionEntityTypes = value;
+            case RETURNED_SESSION -> config.returnedSessionEntityTypes = value;
+            case ALERT_TYPES -> config.alertEntityTypes = value;
+            case RETURNED_TYPES -> config.returnedEntityTypes = value;
+        }
     }
 
     private void setNoneSelection() {
-        if (mode == Mode.ALERT_SESSION) config.alertSessionEntityTypes = NONE_SELECTION;
-        if (mode == Mode.RETURNED_SESSION) config.returnedSessionEntityTypes = NONE_SELECTION;
+        switch (mode) {
+            case ALERT_SESSION -> config.alertSessionEntityTypes = NONE_SELECTION;
+            case RETURNED_SESSION -> config.returnedSessionEntityTypes = NONE_SELECTION;
+            case ALERT_TYPES -> config.alertEntityTypes = NONE_SELECTION;
+            case RETURNED_TYPES -> config.returnedEntityTypes = NONE_SELECTION;
+        }
     }
 
     private boolean isAllSelected() {
-        String raw = mode == Mode.ALERT_SESSION
-                ? config.alertSessionEntityTypes
-                : config.returnedSessionEntityTypes;
+        if (mode == Mode.ALERT_TYPES || mode == Mode.RETURNED_TYPES) return false;
+        String raw = switch (mode) {
+            case ALERT_SESSION -> config.alertSessionEntityTypes;
+            case RETURNED_SESSION -> config.returnedSessionEntityTypes;
+            default -> "";
+        };
         return raw == null || raw.isBlank();
     }
 
     private boolean isNoneSelected() {
-        String raw = mode == Mode.ALERT_SESSION
-                ? config.alertSessionEntityTypes
-                : config.returnedSessionEntityTypes;
+        String raw = switch (mode) {
+            case ALERT_SESSION -> config.alertSessionEntityTypes;
+            case RETURNED_SESSION -> config.returnedSessionEntityTypes;
+            case ALERT_TYPES -> config.alertEntityTypes;
+            case RETURNED_TYPES -> config.returnedEntityTypes;
+            default -> "";
+        };
         return raw != null && raw.trim().equalsIgnoreCase(NONE_SELECTION);
     }
 
@@ -256,6 +273,8 @@ public final class EntityPickerScreen extends Screen {
             case COLORS -> "Цвета мобов";
             case ALERT_SESSION -> "ALERT: мобы в сессию";
             case RETURNED_SESSION -> "RETURNED: мобы в сессию";
+            case ALERT_TYPES -> "ALERT: выбор мобов";
+            case RETURNED_TYPES -> "RETURNED: выбор мобов";
         };
     }
 
