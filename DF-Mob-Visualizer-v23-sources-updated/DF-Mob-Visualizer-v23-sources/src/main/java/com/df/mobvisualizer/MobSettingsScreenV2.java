@@ -227,8 +227,12 @@ public final class MobSettingsScreenV2 extends Screen {
         button(left + 160, 215, 150, "Ширина окна: " + config.hudWidth,
                 b -> { config.hudWidth = nextHudWidth(config.hudWidth); save(); init(); });
 
-        button(left, 240, 310, "Сбросить позицию HUD", b -> { config.hudX = 8; config.hudY = 8; save(); });
-        button(left, 265, 310, "← Назад к разделам", b -> open("main"));
+        // === ЧИТАЕМОСТЬ ===
+        toggle(left, 245, "Обводка текста", config.hudTextOutline, () -> config.hudTextOutline = !config.hudTextOutline);
+        toggle(left, 270, "Подложка строк", config.hudRowBackground, () -> config.hudRowBackground = !config.hudRowBackground);
+
+        button(left, 300, 310, "Сбросить позицию HUD", b -> { config.hudX = 8; config.hudY = 8; save(); });
+        button(left, 325, 310, "← Назад к разделам", b -> open("main"));
     }
 
     private void buildHudContent(int left) {
@@ -317,7 +321,23 @@ public final class MobSettingsScreenV2 extends Screen {
                     init();
                 })));
 
-        button(left, 250, 310, "← Назад к разделам", b -> open("main"));
+        // === НОВЫЕ ЦВЕТА: ИМЯ / КООРДИНАТЫ ===
+        button(left, 250, 150, "Цвет имени моба: " + hex(config.hudMobNameColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Имя моба", config.hudMobNameColor, color -> {
+                    config.hudMobNameColor = color;
+                    save();
+                    init();
+                })));
+        button(left + 160, 250, 150, "Цвет координат: " + hex(config.hudCoordsColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "Координаты", config.hudCoordsColor, color -> {
+                    config.hudCoordsColor = color;
+                    save();
+                    init();
+                })));
+        toggle(left, 275, "Цвет моба для имени", config.hudUseMobColorForName,
+                () -> config.hudUseMobColorForName = !config.hudUseMobColorForName);
+
+        button(left, 310, 310, "← Назад к разделам", b -> open("main"));
     }
 
     private void buildKeys(int left) {
@@ -350,6 +370,8 @@ public final class MobSettingsScreenV2 extends Screen {
         toggle(left, 115, "Игроки в HUD", config.showPlayers, () -> config.showPlayers = !config.showPlayers);
         toggle(left, 140, "Другие сущности", config.includeOtherEntities, () -> config.includeOtherEntities = !config.includeOtherEntities);
         toggle(left, 165, "Сохранять сессию", config.persistSession, () -> config.persistSession = !config.persistSession);
+        button(left, 195, 310, "Закрепить в сессии" + countSummary(config.pinnedEntityTypes), b ->
+            MinecraftClient.getInstance().setScreen(new EntityPickerScreen(this, config, EntityPickerScreen.Mode.SESSION_TYPES)));
     }
 
     private void buildIdColors(int left) {
