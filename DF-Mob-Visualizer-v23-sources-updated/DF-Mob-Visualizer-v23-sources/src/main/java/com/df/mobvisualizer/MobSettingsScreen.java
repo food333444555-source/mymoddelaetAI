@@ -22,10 +22,8 @@ public final class MobSettingsScreen extends Screen {
     private int waitingForKey;
     private ButtonWidget hudKeyButton;
     private ButtonWidget chunksKeyButton;
-    private ButtonWidget mobHighlightsKeyButton;
     private ButtonWidget settingsKeyButton;
     private TextFieldWidget pinnedTypesField;
-    private TextFieldWidget highlightTypesField;
     private TextFieldWidget customColorsField;
     private TextFieldWidget chunkRulesField;
     private int scrollOffset;
@@ -97,13 +95,6 @@ public final class MobSettingsScreen extends Screen {
         pinnedTypesField.setPlaceholder(Text.literal("minecraft:zombie, minecraft:creeper"));
         addDrawableChild(pinnedTypesField);
         y += 25;
-        highlightTypesField = new TextFieldWidget(textRenderer, left, y, 310, 20,
-                Text.literal("Мобы для подсветки через блоки"));
-        highlightTypesField.setMaxLength(2000);
-        highlightTypesField.setText(config.highlightEntityTypes == null ? "" : config.highlightEntityTypes);
-        highlightTypesField.setPlaceholder(Text.literal("Оставь пустым для категорий или: zombie, creeper"));
-        addDrawableChild(highlightTypesField);
-        y += 25;
         customColorsField = new TextFieldWidget(textRenderer, left, y, 310, 20,
                 Text.literal("Цвета мобов"));
         customColorsField.setMaxLength(2000);
@@ -124,20 +115,6 @@ public final class MobSettingsScreen extends Screen {
             button.setMessage(Text.literal(sessionLabel()));
             save();
         }).dimensions(left, y, 150, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("F7: " + (config.seeThroughMobs ? "мобы включены" : "мобы выключены")),
-                button -> {
-                    config.seeThroughMobs = !config.seeThroughMobs;
-                    button.setMessage(Text.literal("F7: " + (config.seeThroughMobs ? "мобы включены" : "мобы выключены")));
-                    save();
-                }).dimensions(left + 160, y, 150, 20).build());
-        y += 25;
-        addDrawableChild(toggle(left, y, 100, "F7 сессия", () -> config.highlightSessionMobs));
-        addDrawableChild(toggle(left + 105, y, 100, "F7 alert", () -> config.highlightAlertMobs));
-        addDrawableChild(toggle(left + 210, y, 100, "F7 низкий ID", () -> config.highlightLowIds));
-        y += 25;
-        addDrawableChild(toggle(left, y, 100, "F7 урон", () -> config.highlightHurtMobs));
-        addDrawableChild(toggle(left + 105, y, 100, "F7 hostile", () -> config.highlightHostileMobs));
-        addDrawableChild(toggle(left + 210, y, 100, "F7 игроки", () -> config.highlightPlayers));
         y += 25;
         addDrawableChild(toggle(left, y, 100, "Центр alert", () -> config.centerAlertMobs));
         addDrawableChild(toggle(left + 105, y, 100, "Центр сессия", () -> config.centerSessionMobs));
@@ -147,9 +124,7 @@ public final class MobSettingsScreen extends Screen {
         addDrawableChild(toggle(left + 105, y, 100, "Центр hostile", () -> config.centerHostileMobs));
         addDrawableChild(toggle(left + 210, y, 100, "Центр игроки", () -> config.centerPlayers));
         y += 25;
-        addDrawableChild(new Slider(this, left, y, 150, 20, "Порог F7 (%): ",
-                config.highlightPercentLimit, 0.0, 100.0, 1));
-        addDrawableChild(new Slider(this, left + 160, y, 150, 20, "Порог центра (%): ",
+        addDrawableChild(new Slider(this, left, y, 150, 20, "Порог центра (%): ",
                 config.centerPercentLimit, 0.0, 100.0, 1));
         y += 25;
         addDrawableChild(new Slider(this, left, y, 150, 20, "Тёмно-красный до (%): ",
@@ -201,23 +176,21 @@ public final class MobSettingsScreen extends Screen {
         hudKeyButton = addKeyButton(left, y, "HUD", config.hudKey, 1);
         chunksKeyButton = addKeyButton(left + 160, y, "Чанки", config.chunksKey, 2);
         y += 25;
-        mobHighlightsKeyButton = addKeyButton(left, y, "Мобы", config.mobHighlightsKey, 3);
-        settingsKeyButton = addKeyButton(left + 160, y, "Настройки", config.settingsKey, 4);
+        settingsKeyButton = addKeyButton(left, y, "Настройки", config.settingsKey, 3);
         y += 25;
         addDrawableChild(ButtonWidget.builder(Text.literal("Клавиша очистки сессии"),
                 button -> {
-                    waitingForKey = 5;
+                    waitingForKey = 4;
                     refreshKeyLabels();
                 }).dimensions(left, y, 150, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Клавиша очистки чанков"),
                 button -> {
-                    waitingForKey = 6;
+                    waitingForKey = 5;
                     refreshKeyLabels();
                 }).dimensions(left + 160, y, 150, 20).build());
         y += 25;
-        addDrawableChild(ButtonWidget.builder(Text.literal("Сбросить клавиши F7/F8/F9/F10"),
+        addDrawableChild(ButtonWidget.builder(Text.literal("Сбросить клавиши F8/F9/F10"),
                 button -> {
-                    config.mobHighlightsKey = GLFW.GLFW_KEY_F7;
                     config.hudKey = GLFW.GLFW_KEY_F8;
                     config.chunksKey = GLFW.GLFW_KEY_F9;
                     config.settingsKey = GLFW.GLFW_KEY_F10;
@@ -296,13 +269,7 @@ public final class MobSettingsScreen extends Screen {
                                 java.util.function.BooleanSupplier getter) {
         return ButtonWidget.builder(Text.literal(label + ": " + (getter.getAsBoolean() ? "да" : "нет")),
                 button -> {
-                    if (label.equals("F7 сессия")) config.highlightSessionMobs = !config.highlightSessionMobs;
-                    else if (label.equals("F7 alert")) config.highlightAlertMobs = !config.highlightAlertMobs;
-                    else if (label.equals("F7 низкий ID")) config.highlightLowIds = !config.highlightLowIds;
-                    else if (label.equals("F7 урон")) config.highlightHurtMobs = !config.highlightHurtMobs;
-                    else if (label.equals("F7 hostile")) config.highlightHostileMobs = !config.highlightHostileMobs;
-                    else if (label.equals("F7 игроки")) config.highlightPlayers = !config.highlightPlayers;
-                    else if (label.equals("Центр alert")) config.centerAlertMobs = !config.centerAlertMobs;
+                    if (label.equals("Центр alert")) config.centerAlertMobs = !config.centerAlertMobs;
                     else if (label.equals("Центр сессия")) config.centerSessionMobs = !config.centerSessionMobs;
                     else if (label.equals("Центр низкий ID")) config.centerLowIds = !config.centerLowIds;
                     else if (label.equals("Центр урон")) config.centerHurtMobs = !config.centerHurtMobs;
@@ -320,8 +287,7 @@ public final class MobSettingsScreen extends Screen {
     private void refreshKeyLabels() {
         if (hudKeyButton != null) hudKeyButton.setMessage(Text.literal((waitingForKey == 1 ? "Нажмите клавишу: " : "HUD: ") + keyName(config.hudKey)));
         if (chunksKeyButton != null) chunksKeyButton.setMessage(Text.literal((waitingForKey == 2 ? "Нажмите клавишу: " : "Чанки: ") + keyName(config.chunksKey)));
-        if (mobHighlightsKeyButton != null) mobHighlightsKeyButton.setMessage(Text.literal((waitingForKey == 3 ? "Нажмите клавишу: " : "Мобы: ") + keyName(config.mobHighlightsKey)));
-        if (settingsKeyButton != null) settingsKeyButton.setMessage(Text.literal((waitingForKey == 4 ? "Нажмите клавишу: " : "Настройки: ") + keyName(config.settingsKey)));
+        if (settingsKeyButton != null) settingsKeyButton.setMessage(Text.literal((waitingForKey == 3 ? "Нажмите клавишу: " : "Настройки: ") + keyName(config.settingsKey)));
     }
 
     private void save() {
@@ -332,7 +298,6 @@ public final class MobSettingsScreen extends Screen {
     @Override
     public void close() {
         if (pinnedTypesField != null) config.pinnedEntityTypes = pinnedTypesField.getText();
-        if (highlightTypesField != null) config.highlightEntityTypes = highlightTypesField.getText();
         if (customColorsField != null) config.customMobColors = customColorsField.getText();
         if (chunkRulesField != null) config.chunkColorRules = chunkRulesField.getText();
         save();
@@ -349,9 +314,8 @@ public final class MobSettingsScreen extends Screen {
             }
             if (waitingForKey == 1) config.hudKey = keyCode;
             else if (waitingForKey == 2) config.chunksKey = keyCode;
-            else if (waitingForKey == 3) config.mobHighlightsKey = keyCode;
-            else if (waitingForKey == 4) config.settingsKey = keyCode;
-            else if (waitingForKey == 5) config.clearSessionKey = keyCode;
+            else if (waitingForKey == 3) config.settingsKey = keyCode;
+            else if (waitingForKey == 4) config.clearSessionKey = keyCode;
             else config.clearChunksKey = keyCode;
             waitingForKey = 0;
             C2MEmod.applyKeyConfig(config);
@@ -367,7 +331,7 @@ public final class MobSettingsScreen extends Screen {
         renderBackground(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, 18, 0xFFE8D7FF);
         context.drawCenteredTextWithShadow(textRenderer,
-                Text.literal("F7 — подсветка мобов | F9 — чанки | F8 — HUD"),
+                Text.literal("F9 — чанки | F10 — настройки | F8 — HUD"),
                 width / 2, height - 28, 0xFFB9A7C9);
         super.render(context, mouseX, mouseY, delta);
     }
@@ -424,7 +388,6 @@ public final class MobSettingsScreen extends Screen {
             else if (label.startsWith("Прозрачность заливки")) screen.config.chunkOpacity = (float) actual;
             else if (label.startsWith("Прозрачность границы")) screen.config.chunkBorderOpacity = (float) actual;
             else if (label.startsWith("Порог сессии")) screen.config.sessionPercentLimit = actual;
-            else if (label.startsWith("Порог F7")) screen.config.highlightPercentLimit = actual;
             else if (label.startsWith("Порог центра")) screen.config.centerPercentLimit = actual;
             else if (label.startsWith("Тёмно-красный")) screen.config.darkRedPercent = actual;
             else if (label.startsWith("Красный")) screen.config.redPercent = actual;
