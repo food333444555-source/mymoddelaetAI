@@ -26,9 +26,15 @@ public final class MobOverlayConfig {
     public int hudSortMode = 0;
     public boolean showPlayers = true;
     public boolean includeOtherEntities = false;
+    public boolean hudShowBackground = true;
     public float hudBackgroundOpacity = 0.53f;
+    public int hudBackgroundColor = 0x0B0710;
     public boolean hudTextShadow = true;
-    public boolean centerBySession = false;
+    public boolean hudUseSystemFont = true;
+    public float hudSystemFontSize = 11.0f;
+    public boolean hudShowIndicators = true;
+    public int hudIndicatorColor = 0xFF75E39A;
+    public int hudIndicatorOffColor = 0xFFFF5555;
 
     // ===== ЦВЕТА ТЕГОВ В HUD =====
     public int hudAlertColor = 0xFFFFD34E;
@@ -38,6 +44,17 @@ public final class MobOverlayConfig {
     public int hudRenamedColor = 0xFFFFFFFF;
     public int hudPlayerColor = 0xFF9EDBFF;
     public int hudSessionColor = 0xFFFFD34E;
+    public int hudTitleColor = 0xFFE8D7FF;
+    public int hudInfoColor = 0xFFFFFFFF;
+    public int hudHintColor = 0xFFB9A7C9;
+    public int hudCenterColor = 0xFFFFD34E;
+
+    // ===== ЦЕНТР =====
+    public boolean centerEnabled = true;
+    public int centerTimeoutSeconds = 60;
+    public int centerClearDistanceChunks = 8;
+    public int centerMinMarkers = 2;
+    public int centerMaxSpreadBlocks = 128;
 
     // ===== ЧАНКИ =====
     public boolean showChunkOverlay = false;
@@ -105,10 +122,7 @@ public final class MobOverlayConfig {
     public boolean pinHurtMobs = true;
     public boolean pinLowIds = true;
 
-    // ===== ПОДСВЕТКА (УДАЛЕНО — БЫЛ ЧИТ) =====
-    // Все поля seeThroughMobs и highlight* удалены
-
-    // ===== СТАРЫЕ ПОЛЯ ДЛЯ СОВМЕСТИМОСТИ (БОЛЬШЕ НЕ ИСПОЛЬЗУЮТСЯ) =====
+    // ===== СТАРЫЕ ПОЛЯ ДЛЯ СОВМЕСТИМОСТИ =====
     public boolean highlightSessionMobs = false;
     public boolean highlightAlertMobs = false;
     public boolean highlightLowIds = false;
@@ -186,6 +200,7 @@ public final class MobOverlayConfig {
         hudX = Math.max(0, hudX);
         hudY = Math.max(0, hudY);
         hudBackgroundOpacity = Math.max(0.0f, Math.min(1.0f, hudBackgroundOpacity));
+        hudSystemFontSize = Math.max(6.0f, Math.min(24.0f, hudSystemFontSize));
         scanIntervalTicks = Math.max(1, Math.min(100, scanIntervalTicks));
         purpleIdLimit = Math.max(0, purpleIdLimit);
         darkRedPercent = clampPercent(darkRedPercent);
@@ -198,6 +213,10 @@ public final class MobOverlayConfig {
         alertMode = alertMode == 1 ? 1 : 0;
         sessionPercentLimit = clampPercent(sessionPercentLimit);
         centerPercentLimit = clampPercent(centerPercentLimit);
+        centerTimeoutSeconds = Math.max(10, Math.min(300, centerTimeoutSeconds));
+        centerClearDistanceChunks = Math.max(1, Math.min(32, centerClearDistanceChunks));
+        centerMinMarkers = Math.max(1, Math.min(20, centerMinMarkers));
+        centerMaxSpreadBlocks = Math.max(16, Math.min(512, centerMaxSpreadBlocks));
         if (alertEntityTypes == null) alertEntityTypes = "";
         if (returnedEntityTypes == null) returnedEntityTypes = "";
         if (pinnedEntityTypes == null) pinnedEntityTypes = "";
