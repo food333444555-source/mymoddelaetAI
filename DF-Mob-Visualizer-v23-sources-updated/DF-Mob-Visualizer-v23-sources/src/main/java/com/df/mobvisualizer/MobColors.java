@@ -8,13 +8,13 @@ public final class MobColors {
     public static int forEntity(String type, int id, int maxId, MobOverlayConfig config,
                                  boolean hurt, boolean returned, boolean alert) {
         if (alert && config.alertEnabled) {
-            return 0xFFFFD34E;
+            return config.alertColor;
         }
         if (hurt && config.hurtEnabled) {
             return config.hurtColor;
         }
         if (returned && config.returnedEnabled) {
-            return config.hurtStarColor;
+            return config.returnedColor;
         }
         Integer custom = customColor(type, config);
         if (custom != null) return custom;
