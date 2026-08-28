@@ -8,7 +8,6 @@ import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
-import net.minecraft.text.Style;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -32,8 +31,6 @@ public final class MobSettingsScreenV2 extends Screen {
     private TextFieldWidget percentRulesField;
     private TextFieldWidget alertGapField;
     private TextFieldWidget alertPercentField;
-    private TextFieldWidget alertTypesField;
-    private TextFieldWidget returnedTypesField;
     private TextFieldWidget returnedDistanceField;
 
     public MobSettingsScreenV2(Screen parent, MobOverlayConfig config, MobOverlayState state) {
@@ -56,25 +53,22 @@ public final class MobSettingsScreenV2 extends Screen {
             button(left, 105, 310, "ALERT мобы", b -> open("alert"));
             button(left, 130, 310, "RETURNED мобы", b -> open("returned"));
             button(left, 155, 310, "HURT (раненые)", b -> open("hurt"));
-            button(left, 180, 310, "Подсветка через стены", b -> open("highlight"));
-            button(left, 205, 310, "Центрирование", b -> open("center"));
-            button(left, 230, 310, "Цвета мобов", b -> open("colors"));
-            button(left, 255, 310, "Клавиши / бинды", b -> open("keys"));
-            button(left, 280, 310, "Цвета по ID и проценту", b -> open("idcolors"));
-            button(left, 305, 310, "Очистка данных", b -> open("cleanup"));
-            button(left, 330, 310, "Готово", b -> close());
+            button(left, 180, 310, "Центрирование", b -> open("center"));
+            button(left, 205, 310, "Цвета мобов", b -> open("colors"));
+            button(left, 230, 310, "Клавиши / бинды", b -> open("keys"));
+            button(left, 255, 310, "Цвета по ID и проценту", b -> open("idcolors"));
+            button(left, 280, 310, "Очистка данных", b -> open("cleanup"));
+            button(left, 305, 310, "Готово", b -> close());
             return;
         }
         button(left, 35, 90, "← Разделы", b -> open("main"));
-        
+
         if (page.equals("alert")) {
             buildAlert(left);
         } else if (page.equals("returned")) {
             buildReturned(left);
         } else if (page.equals("hurt")) {
             buildHurt(left);
-        } else if (page.equals("highlight")) {
-            buildHighlight(left);
         } else if (page.equals("center")) {
             buildCenter(left);
         } else if (page.equals("keys")) {
@@ -96,38 +90,43 @@ public final class MobSettingsScreenV2 extends Screen {
         toggle(left, 65, "ALERT включён", config.alertEnabled, () -> config.alertEnabled = !config.alertEnabled);
         toggle(left, 90, "Режим: " + (config.alertMode == 0 ? "разница ID" : "процент"),
                 true, () -> config.alertMode = config.alertMode == 0 ? 1 : 0);
-        
+
         alertGapField = new TextFieldWidget(textRenderer, left, 115, 150, 20, Text.literal("Разница ID"));
         alertGapField.setText(Integer.toString(config.alertGap));
         addDrawableChild(alertGapField);
-        
+
         alertPercentField = new TextFieldWidget(textRenderer, left + 160, 115, 150, 20, Text.literal("Процент"));
         alertPercentField.setText(Double.toString(config.alertPercent));
         addDrawableChild(alertPercentField);
-        
-        alertTypesField = new TextFieldWidget(textRenderer, left, 145, 310, 20, Text.literal("Типы мобов для ALERT"));
-        alertTypesField.setMaxLength(4000);
-        alertTypesField.setText(config.alertEntityTypes == null ? "" : config.alertEntityTypes);
-        alertTypesField.setPlaceholder(Text.literal("zombie, creeper, skeleton (пусто = все)"));
-        addDrawableChild(alertTypesField);
+
+        button(left, 145, 310, "Типы мобов для ALERT" + countSummary(config.alertEntityTypes), b -> 
+            MinecraftClient.getInstance().setScreen(new EntityPickerScreen(this, config, EntityPickerScreen.Mode.ALERT_TYPES)));
 
         button(left, 170, 310, "Выбор мобов для сессии", b -> MinecraftClient.getInstance().setScreen(
                 new EntityPickerScreen(this, config, EntityPickerScreen.Mode.ALERT_SESSION)));
         toggle(left, 200, "Добавлять в сессию", config.alertAddToSession,
                 () -> config.alertAddToSession = !config.alertAddToSession);
         toggle(left, 225, "Центрировать", config.alertCenter, () -> config.alertCenter = !config.alertCenter);
-        toggle(left, 250, "Подсвечивать через стены", config.alertHighlight,
-                () -> config.alertHighlight = !config.alertHighlight);
+
+        button(left, 255, 150, "Цвет ALERT: " + hex(config.alertColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "ALERT", config.alertColor, color -> {
+                    config.alertColor = color;
+                    save();
+                    init();
+                })));
+        button(left + 160, 255, 150, "Цвет тега ALERT: " + hex(config.hudAlertColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "ALERT HUD", config.hudAlertColor, color -> {
+                    config.hudAlertColor = color;
+                    save();
+                    init();
+                })));
     }
 
     private void buildReturned(int left) {
         toggle(left, 65, "RETURNED включён", config.returnedEnabled, () -> config.returnedEnabled = !config.returnedEnabled);
-        
-        returnedTypesField = new TextFieldWidget(textRenderer, left, 90, 310, 20, Text.literal("Типы мобов для RETURNED"));
-        returnedTypesField.setMaxLength(4000);
-        returnedTypesField.setText(config.returnedEntityTypes == null ? "" : config.returnedEntityTypes);
-        returnedTypesField.setPlaceholder(Text.literal("zombie, creeper, skeleton (пусто = все)"));
-        addDrawableChild(returnedTypesField);
+
+        button(left, 90, 310, "Типы мобов для RETURNED" + countSummary(config.returnedEntityTypes), b -> 
+            MinecraftClient.getInstance().setScreen(new EntityPickerScreen(this, config, EntityPickerScreen.Mode.RETURNED_TYPES)));
 
         button(left, 120, 310, "Выбор мобов для сессии", b -> MinecraftClient.getInstance().setScreen(
                 new EntityPickerScreen(this, config, EntityPickerScreen.Mode.RETURNED_SESSION)));
@@ -140,39 +139,44 @@ public final class MobSettingsScreenV2 extends Screen {
                 () -> config.returnedAddToSession = !config.returnedAddToSession);
         toggle(left, 180, "Центрировать", config.returnedCenter,
                 () -> config.returnedCenter = !config.returnedCenter);
-        toggle(left, 205, "Подсвечивать через стены", config.returnedHighlight,
-                () -> config.returnedHighlight = !config.returnedHighlight);
+
+        button(left, 210, 150, "Цвет RETURNED: " + hex(config.returnedColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "RETURNED", config.returnedColor, color -> {
+                    config.returnedColor = color;
+                    save();
+                    init();
+                })));
+        button(left + 160, 210, 150, "Цвет тега RETURNED: " + hex(config.hudReturnedColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "RETURNED HUD", config.hudReturnedColor, color -> {
+                    config.hudReturnedColor = color;
+                    save();
+                    init();
+                })));
     }
 
     private void buildHurt(int left) {
         toggle(left, 65, "HURT включён", config.hurtEnabled, () -> config.hurtEnabled = !config.hurtEnabled);
         toggle(left, 90, "Добавлять в сессию", config.hurtAddToSession, () -> config.hurtAddToSession = !config.hurtAddToSession);
         toggle(left, 115, "Центрировать", config.hurtCenter, () -> config.hurtCenter = !config.hurtCenter);
-        toggle(left, 140, "Подсвечивать через стены", config.hurtHighlight, () -> config.hurtHighlight = !config.hurtHighlight);
-        
-        button(left, 165, 150, "Цвет HURT: " + hex(config.hurtColor),
+
+        button(left, 145, 150, "Цвет HURT: " + hex(config.hurtColor),
                 b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "HURT", config.hurtColor, color -> {
                     config.hurtColor = color;
                     save();
                     init();
                 })));
-        button(left + 160, 165, 150, "Цвет HURT*: " + hex(config.hurtStarColor),
+        button(left + 160, 145, 150, "Цвет HURT*: " + hex(config.hurtStarColor),
                 b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "HURT*", config.hurtStarColor, color -> {
                     config.hurtStarColor = color;
                     save();
                     init();
                 })));
-    }
-
-    private void buildHighlight(int left) {
-        toggle(left, 65, "Подсветка включена", config.seeThroughMobs, () -> config.seeThroughMobs = !config.seeThroughMobs);
-        toggle(left, 90, "HURT (раненые)", config.highlightHurt, () -> config.highlightHurt = !config.highlightHurt);
-        toggle(left, 115, "ALERT", config.highlightAlert, () -> config.highlightAlert = !config.highlightAlert);
-        toggle(left, 140, "RETURNED (вернувшиеся)", config.highlightReturned, () -> config.highlightReturned = !config.highlightReturned);
-        toggle(left, 165, "CHARGED (заряженные)", config.highlightCharged, () -> config.highlightCharged = !config.highlightCharged);
-        toggle(left, 190, "RENAMED (переименованные)", config.highlightRenamed, () -> config.highlightRenamed = !config.highlightRenamed);
-        toggle(left, 215, "Игроки", config.highlightPlayers, () -> config.highlightPlayers = !config.highlightPlayers);
-        toggle(left, 240, "ALL (все мобы)", config.highlightAll, () -> config.highlightAll = !config.highlightAll);
+        button(left, 175, 310, "Цвет тега HURT: " + hex(config.hudHurtColor),
+                b -> MinecraftClient.getInstance().setScreen(new MobColorPickerScreen(this, "HURT HUD", config.hudHurtColor, color -> {
+                    config.hudHurtColor = color;
+                    save();
+                    init();
+                })));
     }
 
     private void buildCenter(int left) {
@@ -187,19 +191,24 @@ public final class MobSettingsScreenV2 extends Screen {
 
     private void buildKeys(int left) {
         button(left, 65, 150, keyLabel("HUD", config.hudKey, config.hudScanCode, 1), b -> waitKey(1));
-        button(left + 160, 65, 150, keyLabel("Мобы", config.mobHighlightsKey, config.mobHighlightsScanCode, 2), b -> waitKey(2));
-        button(left, 90, 150, keyLabel("Настройки", config.settingsKey, config.settingsScanCode, 3), b -> waitKey(3));
-        button(left + 160, 90, 150, keyLabel("Чанки", config.chunksKey, config.chunksScanCode, 4), b -> waitKey(4));
-        button(left, 115, 150, keyLabel("Очистить сессию", config.clearSessionKey, config.clearSessionScanCode, 5), b -> waitKey(5));
-        button(left + 160, 115, 150, keyLabel("Очистить чанки", config.clearChunksKey, config.clearChunksScanCode, 6), b -> waitKey(6));
+        button(left + 160, 65, 150, keyLabel("Настройки", config.settingsKey, config.settingsScanCode, 3), b -> waitKey(3));
+        button(left, 90, 150, keyLabel("Чанки", config.chunksKey, config.chunksScanCode, 4), b -> waitKey(4));
+        button(left + 160, 90, 150, keyLabel("Очистить сессию", config.clearSessionKey, config.clearSessionScanCode, 5), b -> waitKey(5));
+        button(left, 115, 150, keyLabel("Очистить чанки", config.clearChunksKey, config.clearChunksScanCode, 6), b -> waitKey(6));
         button(left, 150, 310, "Сбросить все клавиши", b -> {
-            config.hudKey = GLFW.GLFW_KEY_F8; config.mobHighlightsKey = GLFW.GLFW_KEY_F7;
-            config.settingsKey = GLFW.GLFW_KEY_F10; config.chunksKey = GLFW.GLFW_KEY_F9;
-            config.clearSessionKey = GLFW.GLFW_KEY_F5; config.clearChunksKey = GLFW.GLFW_KEY_F6;
-            config.hudScanCode = 0; config.mobHighlightsScanCode = 0;
-            config.settingsScanCode = 0; config.chunksScanCode = 0;
-            config.clearSessionScanCode = 0; config.clearChunksScanCode = 0;
-            C2MEmod.applyKeyConfig(config); save(); init();
+            config.hudKey = GLFW.GLFW_KEY_F8;
+            config.settingsKey = GLFW.GLFW_KEY_F10; 
+            config.chunksKey = GLFW.GLFW_KEY_F9;
+            config.clearSessionKey = GLFW.GLFW_KEY_F5; 
+            config.clearChunksKey = GLFW.GLFW_KEY_F6;
+            config.hudScanCode = 0; 
+            config.settingsScanCode = 0;
+            config.chunksScanCode = 0;
+            config.clearSessionScanCode = 0; 
+            config.clearChunksScanCode = 0;
+            C2MEmod.applyKeyConfig(config); 
+            save(); 
+            init();
         });
         if (waitingForKey != 0) button(left, 185, 310, "Нажми клавишу (ESC — отмена)", b -> {});
     }
@@ -226,27 +235,33 @@ public final class MobSettingsScreenV2 extends Screen {
 
     private void buildHud(int left) {
         toggle(left, 65, "HUD", config.showHud, () -> config.showHud = !config.showHud);
-        toggle(left, 90, "Подсветка через стены", config.seeThroughMobs, () -> config.seeThroughMobs = !config.seeThroughMobs);
-        toggle(left, 115, "Карта чанков", config.showChunkOverlay,
+        toggle(left, 90, "Карта чанков", config.showChunkOverlay,
                 () -> config.showChunkOverlay = !config.showChunkOverlay);
-        toggle(left, 140, "Заливка чанков", config.showChunkFill,
+        toggle(left, 115, "Заливка чанков", config.showChunkFill,
                 () -> config.showChunkFill = !config.showChunkFill);
-        
-        button(left, 165, 150, "Высота слоя: " + config.chunkYOffset + " блоков",
+        toggle(left, 140, "Тень текста HUD", config.hudTextShadow,
+                () -> config.hudTextShadow = !config.hudTextShadow);
+        toggle(left, 165, "Центр по сессии", config.centerBySession,
+                () -> config.centerBySession = !config.centerBySession);
+
+        button(left, 190, 150, "Высота слоя: " + config.chunkYOffset + " блоков",
                 b -> MinecraftClient.getInstance().setScreen(new HeightInputScreen(this, config, true)));
-        
-        button(left + 160, 165, 150, "Толщина: " + config.chunkHeight + " блок(ов)",
+
+        button(left + 160, 190, 150, "Толщина: " + config.chunkHeight + " блок(ов)",
                 b -> MinecraftClient.getInstance().setScreen(new HeightInputScreen(this, config, false)));
-        
-        button(left, 190, 310, "Прозрачность: " + percent(config.chunkOpacity),
+
+        button(left, 215, 150, "Прозрачность фона: " + percent(config.hudBackgroundOpacity),
+                b -> { config.hudBackgroundOpacity = nextOpacity(config.hudBackgroundOpacity); save(); init(); });
+        button(left + 160, 215, 150, "Прозрачность чанков: " + percent(config.chunkOpacity),
                 b -> { config.chunkOpacity = nextOpacity(config.chunkOpacity); save(); init(); });
-        button(left, 215, 310, "Усиление: " + String.format(Locale.ROOT, "%.1fx", config.chunkFillStrength),
+
+        button(left, 240, 310, "Усиление: " + String.format(Locale.ROOT, "%.1fx", config.chunkFillStrength),
                 b -> { config.chunkFillStrength = nextStrength(config.chunkFillStrength); save(); init(); });
-        button(left, 240, 310, "Граница: " + percent(config.chunkBorderOpacity),
+        button(left, 265, 310, "Граница: " + percent(config.chunkBorderOpacity),
                 b -> { config.chunkBorderOpacity = nextOpacity(config.chunkBorderOpacity); save(); init(); });
-        toggle(left, 265, "Игроки в HUD", config.showPlayers, () -> config.showPlayers = !config.showPlayers);
-        button(left, 290, 310, "Сбросить позицию HUD", b -> { config.hudX = 8; config.hudY = 8; save(); });
-        button(left, 315, 310, "← Назад к разделам", b -> open("main"));
+        toggle(left, 290, "Игроки в HUD", config.showPlayers, () -> config.showPlayers = !config.showPlayers);
+        button(left, 315, 310, "Сбросить позицию HUD", b -> { config.hudX = 8; config.hudY = 8; save(); });
+        button(left, 340, 310, "← Назад к разделам", b -> open("main"));
     }
 
     private void buildColors(int left) {
@@ -285,11 +300,13 @@ public final class MobSettingsScreenV2 extends Screen {
         return String.format("#%08X", color);
     }
 
-    private void toggle(int x, int y, String label, boolean value, Runnable action) {
-        button(x, y, 310, label + ": " + (value ? "ВКЛ" : "ВЫКЛ"), b -> { action.run(); save(); init(); });
+    private static String countSummary(String types) {
+        if (types == null || types.isBlank()) return ": нет";
+        int count = types.split(",").length;
+        return ": " + count + " типов";
     }
 
-    private void toggle(int x, int y, String label, boolean value, Runnable action, boolean dummy) {
+    private void toggle(int x, int y, String label, boolean value, Runnable action) {
         button(x, y, 310, label + ": " + (value ? "ВКЛ" : "ВЫКЛ"), b -> { action.run(); save(); init(); });
     }
 
@@ -301,7 +318,6 @@ public final class MobSettingsScreenV2 extends Screen {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) { waitingForKey = 0; init(); return true; }
         switch (waitingForKey) {
             case 1 -> { config.hudKey = keyCode; config.hudScanCode = scanCode; }
-            case 2 -> { config.mobHighlightsKey = keyCode; config.mobHighlightsScanCode = scanCode; }
             case 3 -> { config.settingsKey = keyCode; config.settingsScanCode = scanCode; }
             case 4 -> { config.chunksKey = keyCode; config.chunksScanCode = scanCode; }
             case 5 -> { config.clearSessionKey = keyCode; config.clearSessionScanCode = scanCode; }
@@ -344,7 +360,6 @@ public final class MobSettingsScreenV2 extends Screen {
             case "alert" -> "ALERT мобы";
             case "returned" -> "RETURNED мобы";
             case "hurt" -> "HURT (раненые)";
-            case "highlight" -> "Подсветка через стены";
             case "center" -> "Центрирование";
             case "keys" -> "Настройка клавиш";
             case "general" -> "Общие настройки";
@@ -364,8 +379,6 @@ public final class MobSettingsScreenV2 extends Screen {
             try { config.alertPercent = Double.parseDouble(alertPercentField.getText().trim()); }
             catch (NumberFormatException ignored) { }
         }
-        if (alertTypesField != null) config.alertEntityTypes = alertTypesField.getText();
-        if (returnedTypesField != null) config.returnedEntityTypes = returnedTypesField.getText();
         if (returnedDistanceField != null) {
             try {
                 config.returnedDistanceBlocks = Double.parseDouble(returnedDistanceField.getText().trim());
