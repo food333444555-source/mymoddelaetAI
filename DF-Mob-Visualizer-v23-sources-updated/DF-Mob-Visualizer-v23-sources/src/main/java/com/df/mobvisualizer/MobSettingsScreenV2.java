@@ -58,8 +58,9 @@ public final class MobSettingsScreenV2 extends Screen {
             button(left, 230, 310, "Цвета мобов", b -> open("colors"));
             button(left, 255, 310, "Клавиши / бинды", b -> open("keys"));
             button(left, 280, 310, "Цвета по ID и проценту", b -> open("idcolors"));
-            button(left, 305, 310, "Очистка данных", b -> open("cleanup"));
-            button(left, 330, 310, "Готово", b -> close());
+            button(left, 305, 310, "Чанки", b -> open("chunks"));
+            button(left, 330, 310, "Очистка данных", b -> open("cleanup"));
+            button(left, 355, 310, "Готово", b -> close());
             return;
         }
         button(left, 35, 90, "← Разделы", b -> open("main"));
@@ -84,6 +85,8 @@ public final class MobSettingsScreenV2 extends Screen {
             buildHudContent(left);
         } else if (page.equals("colors")) {
             buildColors(left);
+        } else if (page.equals("chunks")) {
+            buildChunks(left);
         } else {
             buildCleanup(left);
         }
@@ -392,6 +395,41 @@ public final class MobSettingsScreenV2 extends Screen {
         button(left, 95, 310, "← Назад к разделам", b -> open("main"));
     }
 
+    private void buildChunks(int left) {
+        toggle(left, 65, "Оверлей чанков", config.showChunkOverlay, () -> {
+            config.showChunkOverlay = !config.showChunkOverlay;
+            save();
+        });
+        toggle(left, 90, "Показывать заливку", config.showChunkFill, () -> {
+            config.showChunkFill = !config.showChunkFill;
+            save();
+        });
+        toggle(left, 115, "Только по правилам", config.markOnlyRuleChunks, () -> {
+            config.markOnlyRuleChunks = !config.markOnlyRuleChunks;
+            save();
+        });
+
+        button(left, 145, 150, "Прозрачность: " + percent(config.chunkOpacity),
+                b -> { config.chunkOpacity = nextOpacity(config.chunkOpacity); save(); init(); });
+        button(left + 160, 145, 150, "Прозрачность границы: " + percent(config.chunkBorderOpacity),
+                b -> { config.chunkBorderOpacity = nextOpacity(config.chunkBorderOpacity); save(); init(); });
+
+        button(left, 170, 150, "Сила заливки: " + String.format(Locale.ROOT, "%.1fx", config.chunkFillStrength),
+                b -> { config.chunkFillStrength = nextStrength(config.chunkFillStrength); save(); init(); });
+        button(left + 160, 170, 150, "Дальность: " + String.format(Locale.ROOT, "%.0f", config.renderDistanceChunks) + " ч",
+                b -> { config.renderDistanceChunks = nextRenderDist(config.renderDistanceChunks); save(); init(); });
+
+        button(left, 200, 150, "Высота слоя: " + config.chunkYOffset,
+                b -> MinecraftClient.getInstance().setScreen(new HeightInputScreen(this, config, true)));
+        button(left + 160, 200, 150, "Толщина слоя: " + config.chunkHeight,
+                b -> MinecraftClient.getInstance().setScreen(new HeightInputScreen(this, config, false)));
+
+        button(left, 230, 310, "Правила цветов чанков", b ->
+                MinecraftClient.getInstance().setScreen(new ColorRulesScreen(this, config, false)));
+
+        button(left, 265, 310, "← Назад к разделам", b -> open("main"));
+    }
+
     private void buildCleanup(int left) {
         button(left, 65, 310, "Очистить сессию (" + state.sessionCount() + ")", b -> { state.clearSession(); save(); });
         button(left, 90, 310, "Очистить историю чанков", b -> { state.clearChunks(); save(); });
@@ -433,6 +471,12 @@ public final class MobSettingsScreenV2 extends Screen {
         for (float candidate : values) {
             if (value < candidate - 0.001f) return candidate;
         }
+        return values[0];
+    }
+
+    private static double nextRenderDist(double value) {
+        double[] values = {1, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64};
+        for (double v : values) if (value < v - 0.001) return v;
         return values[0];
     }
 
@@ -531,6 +575,7 @@ public final class MobSettingsScreenV2 extends Screen {
             case "hud_content" -> "HUD — цвета и содержимое";
             case "idcolors" -> "Цвета по ID и проценту";
             case "colors" -> "Цвета мобов";
+            case "chunks" -> "Настройки чанков";
             default -> "Очистка данных";
         };
     }
