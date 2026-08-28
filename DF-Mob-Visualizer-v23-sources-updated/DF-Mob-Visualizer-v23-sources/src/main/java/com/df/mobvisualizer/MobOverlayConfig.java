@@ -49,6 +49,15 @@ public final class MobOverlayConfig {
     public int hudHintColor = 0xFFB9A7C9;
     public int hudCenterColor = 0xFFFFD34E;
 
+    // ===== НОВЫЕ ЦВЕТА HUD =====
+    public int hudMobNameColor = 0xFFFFFFFF;
+    public int hudCoordsColor = 0xFFB9A7C9;
+    public boolean hudUseMobColorForName = true;
+
+    // ===== ЧИТАЕМОСТЬ HUD =====
+    public boolean hudTextOutline = false;
+    public boolean hudRowBackground = false;
+
     // ===== ЦЕНТР =====
     public boolean centerEnabled = true;
     public int centerTimeoutSeconds = 60;
