@@ -31,6 +31,16 @@ public final class MobOverlayState {
     private final Map<Integer, TrackedMob> goneMobs = new HashMap<>();
     private final Map<Integer, Double> goneMaxDistance = new HashMap<>();
     private final Map<Integer, Boolean> hurtStarMap = new HashMap<>();
+
+    // === НАКОПЛЕННЫЕ СОСТОЯНИЯ (суммируются в сессии) ===
+    private final Map<Integer, Boolean> wasAlert = new HashMap<>();
+    private final Map<Integer, Boolean> wasHurt = new HashMap<>();
+    private final Map<Integer, Boolean> wasReturned = new HashMap<>();
+
+    // === Позиции для центра (даже когда моб не в прогрузке) ===
+    private final Map<Integer, int[]> sessionPositions = new HashMap<>();
+    private final Map<Integer, Long> sessionLastSeen = new HashMap<>();
+
     private int maxId;
     private int currentMaxId;
     private boolean sessionDirty;
@@ -63,25 +73,32 @@ public final class MobOverlayState {
 
     public synchronized void accept(TrackedMob mob) {
         mobs.put(mob.id(), mob);
-        
+
         if (mob.hurt()) {
             hurtStarMap.put(mob.id(), true);
+            wasHurt.put(mob.id(), true);
         }
-        
+        if (mob.alert()) {
+            wasAlert.put(mob.id(), true);
+        }
+
         boolean wasInSession = session.containsKey(mob.id());
         boolean isReturned = returnedIds.contains(mob.id());
-        
+
         if (isReturned) {
             returnedIds.remove(mob.id());
+            wasReturned.put(mob.id(), true);
             if (config.returnedEnabled && matchesReturnedType(mob.type())) {
                 session.put(mob.id(), mob);
+                sessionPositions.put(mob.id(), new int[]{mob.x(), mob.y(), mob.z()});
+                sessionLastSeen.put(mob.id(), System.currentTimeMillis());
                 sessionDirty = true;
             }
         }
-        
+
         boolean explicitType = pinnedTypes().stream().anyMatch(type ->
                 mob.type().equalsIgnoreCase(type) || mob.type().toLowerCase(Locale.ROOT).endsWith(":" + type));
-        
+
         boolean pin = config.sessionEnabled
                 && ((config.alertEnabled && mob.alert() && config.alertAddToSession
                 && matchesSessionType(mob.type(), config.alertSessionEntityTypes))
@@ -89,12 +106,14 @@ public final class MobOverlayState {
                 || (config.returnedEnabled && mob.returned() && config.returnedAddToSession
                 && matchesSessionType(mob.type(), config.returnedSessionEntityTypes))
                 || explicitType);
-        
+
         if (pin || session.containsKey(mob.id())) {
             TrackedMob previous = session.put(mob.id(), mob);
+            sessionPositions.put(mob.id(), new int[]{mob.x(), mob.y(), mob.z()});
+            sessionLastSeen.put(mob.id(), System.currentTimeMillis());
             if (previous == null || !previous.equals(mob)) sessionDirty = true;
         }
-        
+
         Integer ruleColor = MobColors.chunkColor(mob.id(), currentMaxId, config);
         if (ruleColor == null) return;
         long key = chunkKey(mob.chunkX(), mob.chunkZ());
@@ -134,7 +153,10 @@ public final class MobOverlayState {
         for (Integer id : new HashSet<>(goneMobs.keySet())) {
             if (!mobs.containsKey(id)) continue;
             double maxDistance = goneMaxDistance.getOrDefault(id, 0.0);
-            if (maxDistance >= config.returnedDistanceBlocks) returnedIds.add(id);
+            if (maxDistance >= config.returnedDistanceBlocks) {
+                returnedIds.add(id);
+                wasReturned.put(id, true);
+            }
             goneMobs.remove(id);
             goneMaxDistance.remove(id);
         }
@@ -196,10 +218,32 @@ public final class MobOverlayState {
         return hurtStarMap.getOrDefault(id, false);
     }
 
+    // === НАКОПЛЕННЫЕ СОСТОЯНИЯ ===
+    public synchronized boolean wasAlert(int id) {
+        return wasAlert.getOrDefault(id, false);
+    }
+
+    public synchronized boolean wasHurt(int id) {
+        return wasHurt.getOrDefault(id, false);
+    }
+
+    public synchronized boolean wasReturned(int id) {
+        return wasReturned.getOrDefault(id, false);
+    }
+
     public synchronized Collection<TrackedMob> visibleSession() {
         ArrayList<TrackedMob> result = new ArrayList<>(session.values());
         result.sort(Comparator.comparingInt(TrackedMob::id));
         return result;
+    }
+
+    // === Позиции сессии для центра ===
+    public synchronized Map<Integer, int[]> sessionPositions() {
+        long now = System.currentTimeMillis();
+        long timeoutMs = config.centerTimeoutSeconds * 1000L;
+        sessionLastSeen.entrySet().removeIf(e -> now - e.getValue() > timeoutMs);
+        sessionPositions.keySet().retainAll(sessionLastSeen.keySet());
+        return new HashMap<>(sessionPositions);
     }
 
     public synchronized int currentMobCount() {
@@ -236,6 +280,11 @@ public final class MobOverlayState {
 
     public synchronized void clearSession() {
         session.clear();
+        sessionPositions.clear();
+        sessionLastSeen.clear();
+        wasAlert.clear();
+        wasHurt.clear();
+        wasReturned.clear();
         returnedIds.clear();
         sessionDirty = false;
         saveSession();
@@ -295,7 +344,7 @@ public final class MobOverlayState {
                 return true;
             }
         }
-        return false;
+        return true;
     }
 
     private static boolean isMoreSignificant(int oldColor, int newColor) {
@@ -323,7 +372,14 @@ public final class MobOverlayState {
             List<TrackedMob> saved = GSON.fromJson(reader,
                     new TypeToken<List<TrackedMob>>() {}.getType());
             if (saved != null) {
-                for (TrackedMob mob : saved) session.put(mob.id(), mob);
+                for (TrackedMob mob : saved) {
+                    session.put(mob.id(), mob);
+                    sessionPositions.put(mob.id(), new int[]{mob.x(), mob.y(), mob.z()});
+                    sessionLastSeen.put(mob.id(), System.currentTimeMillis());
+                    if (mob.alert()) wasAlert.put(mob.id(), true);
+                    if (mob.hurt()) wasHurt.put(mob.id(), true);
+                    if (mob.returned()) wasReturned.put(mob.id(), true);
+                }
             }
         } catch (Exception ignored) {
         }
