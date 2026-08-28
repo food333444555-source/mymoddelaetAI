@@ -285,6 +285,20 @@ public final class C2MEmod implements ClientModInitializer {
     }
 
     private void drawSystemText(DrawContext ctx, String text, int x, int y, int color) {
+        if (config.hudTextOutline) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (dx == 0 && dy == 0) continue;
+                    drawSystemTextRaw(ctx, text, x + dx, y + dy, 0xFF000000);
+                }
+            }
+        } else if (config.hudTextShadow) {
+            drawSystemTextRaw(ctx, text, x + 1, y + 1, 0xFF333333);
+        }
+        drawSystemTextRaw(ctx, text, x, y, color);
+    }
+
+    private void drawSystemTextRaw(DrawContext ctx, String text, int x, int y, int color) {
         if (systemFont == null) {
             ctx.drawText(MinecraftClient.getInstance().textRenderer, Text.literal(text), x, y, color, config.hudTextShadow);
             return;
@@ -309,7 +323,6 @@ public final class C2MEmod implements ClientModInitializer {
         g2d.drawString(text, 0, systemFontHeight - g2d.getFontMetrics().getDescent());
         g2d.dispose();
 
-        // Convert to native image and draw
         int[] pixels = img.getRGB(0, 0, width, height, null, 0, width);
         for (int py = 0; py < height; py++) {
             for (int px = 0; px < width; px++) {
@@ -338,16 +351,14 @@ public final class C2MEmod implements ClientModInitializer {
         int y = config.hudY;
         float totalScale = config.hudScale * config.hudTextScale;
 
-        // Calculate content height first
         int lineHeight = useSystem ? Math.max(11, systemFontHeight) : 11;
-        int contentLines = 5; // header + info + hints + center + spacing
+        int contentLines = 5;
         contentLines += state.currentMobCount();
         contentLines += state.visiblePlayers().size() + 2;
         contentLines += state.sessionCount() + 2;
 
         int contentHeight = contentLines * lineHeight + 20;
 
-        // Background
         if (config.hudShowBackground) {
             int bgAlpha = (int)(config.hudBackgroundOpacity * 255) << 24;
             int bgColor = bgAlpha | (config.hudBackgroundColor & 0xFFFFFF);
@@ -426,7 +437,11 @@ public final class C2MEmod implements ClientModInitializer {
         sy += lineHeight + 3;
 
         // === MOBS ===
+        int rowBgW = Math.round(config.hudWidth / totalScale);
         for (TrackedMob mob : state.visibleMobs()) {
+            if (config.hudRowBackground) {
+                drawContext.fill(sx - 4, sy - 1, sx + rowBgW - 8, sy + lineHeight + 1, 0x44000000);
+            }
             sy = drawMobLine(drawContext, mcFont, mob, sx, sy, useSystem, lineHeight, true);
         }
         sy += 3;
@@ -438,6 +453,9 @@ public final class C2MEmod implements ClientModInitializer {
         sy += lineHeight + 2;
 
         for (TrackedMob mob : state.visiblePlayers()) {
+            if (config.hudRowBackground) {
+                drawContext.fill(sx - 4, sy - 1, sx + rowBgW - 8, sy + lineHeight + 1, 0x44000000);
+            }
             String text = mob.name() + " ID-" + mob.id()
                     + " XYZ[" + mob.x() + ", " + mob.y() + ", " + mob.z() + "]";
             if (useSystem) drawSystemText(drawContext, text, sx, sy, mob.color());
@@ -453,6 +471,9 @@ public final class C2MEmod implements ClientModInitializer {
         sy += lineHeight + 2;
 
         for (TrackedMob mob : state.visibleSession()) {
+            if (config.hudRowBackground) {
+                drawContext.fill(sx - 4, sy - 1, sx + rowBgW - 8, sy + lineHeight + 1, 0x44000000);
+            }
             sy = drawMobLine(drawContext, mcFont, mob, sx, sy, useSystem, lineHeight, false);
         }
 
@@ -473,13 +494,22 @@ public final class C2MEmod implements ClientModInitializer {
         tagX = drawTagLine(ctx, mcFont, "RENAMED", mob.renamed(), config.hudRenamedColor, tagX, y, useSystem);
 
         String hurtStarText = mob.hurtStar() && !mob.hurt() ? "[HURT*] " : "";
-        String nameText = hurtStarText + mob.name() + (mob.renamed() ? " [переименован]" : "")
+        String namePart = hurtStarText + mob.name() + (mob.renamed() ? " [переименован]" : "")
                 + "  ID-" + mob.id()
-                + " (" + formatPercent(mob.id(), state.currentMaxId()) + "%)"
-                + "  XYZ[" + mob.x() + ", " + mob.y() + ", " + mob.z() + "]";
+                + " (" + formatPercent(mob.id(), state.currentMaxId()) + "%)";
+        String coordsPart = "  XYZ[" + mob.x() + ", " + mob.y() + ", " + mob.z() + "]";
 
-        if (useSystem) drawSystemText(ctx, nameText, tagX, y, mob.color());
-        else drawText(ctx, mcFont, Text.literal(nameText), tagX, y, mob.color(), config.hudTextShadow);
+        int nameColor = config.hudUseMobColorForName ? mob.color() : config.hudMobNameColor;
+
+        if (useSystem) {
+            drawSystemText(ctx, namePart, tagX, y, nameColor);
+            int nameWidth = getSystemTextWidth(namePart);
+            drawSystemText(ctx, coordsPart, tagX + nameWidth, y, config.hudCoordsColor);
+        } else {
+            drawText(ctx, mcFont, Text.literal(namePart), tagX, y, nameColor, config.hudTextShadow);
+            int nameWidth = mcFont.getWidth(namePart);
+            drawText(ctx, mcFont, Text.literal(coordsPart), tagX + nameWidth, y, config.hudCoordsColor, config.hudTextShadow);
+        }
 
         return y + lineHeight;
     }
@@ -500,9 +530,21 @@ public final class C2MEmod implements ClientModInitializer {
         return on ? "\u2713" + name : "\u2717" + name;
     }
 
-    private static void drawText(DrawContext ctx, TextRenderer tr, Text text, int x, int y, int color, boolean shadow) {
-        if (shadow) ctx.drawTextWithShadow(tr, text, x, y, color);
-        else ctx.drawText(tr, text, x, y, color, false);
+    private void drawText(DrawContext ctx, TextRenderer tr, Text text, int x, int y, int color, boolean shadow) {
+        if (config.hudTextOutline) {
+            int outlineColor = 0xFF000000;
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (dx == 0 && dy == 0) continue;
+                    ctx.drawText(tr, text, x + dx, y + dy, outlineColor, false);
+                }
+            }
+            ctx.drawText(tr, text, x, y, color, false);
+        } else if (shadow) {
+            ctx.drawTextWithShadow(tr, text, x, y, color);
+        } else {
+            ctx.drawText(tr, text, x, y, color, false);
+        }
     }
 
     private static String formatPercent(int id, int maxId) {
