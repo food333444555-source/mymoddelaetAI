@@ -115,7 +115,7 @@ public final class VanillaJavaBridge implements AutoCloseable {
                 } else if (typeName.endsWith("Immutable") || typeName.contains("Immutable")) {
                     arguments[i] = null;
                 } else if (type.isAssignableFrom(String.class)) {
-                    arguments[i] = serverInfo.name();
+                    arguments[i] = serverInfo.name;
                 } else if (ServerInfo.class.isAssignableFrom(type)) {
                     arguments[i] = serverInfo;
                 } else if (typeName.endsWith("Screen") || typeName.contains("Gui") && typeName.endsWith("Screen")) {
@@ -145,7 +145,7 @@ public final class VanillaJavaBridge implements AutoCloseable {
      * project-specific play screen.
      */
     public static VanillaJavaBridge enter(MinecraftClient client, PeServerEntry server,
-                                           JavaPlaySession session) {
+                                            JavaPlaySession session) {
         final VanillaJavaBridge bridge = new VanillaJavaBridge(client, server, session);
         synchronized (ACTIVE) {
             ACTIVE.put(bridge.networkHandler, bridge);
