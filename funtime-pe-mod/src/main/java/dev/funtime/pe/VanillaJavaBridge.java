@@ -1,5 +1,6 @@
 package dev.funtime.pe;
 
+import com.mojang.authlib.GameProfile;
 import dev.funtime.pe.mixin.ClientPlayNetworkHandlerInvoker;
 import dev.funtime.pe.world.ChunkSection;
 import dev.funtime.pe.world.BedrockWorldState;
@@ -27,6 +28,8 @@ import net.minecraft.world.dimension.DimensionTypes;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.time.Duration;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -76,9 +79,9 @@ public final class VanillaJavaBridge implements AutoCloseable {
     }
 
     /**
-     * Minecraft 1.21.4 exposes a larger ClientConnectionState constructor than
-     * older versions. We build it via reflection to avoid depending on the
-     * exact parameter ordering or optional defaults in each mapping build.
+     * Minecraft 1.21.4 exposes a larger ClientConnectionState record than
+     * older versions. Build it with reflection so we don't depend on the exact
+     * parameter ordering of the current mappings build.
      */
     private static ClientConnectionState createConnectionState(MinecraftClient client,
                                                               ServerInfo serverInfo) {
@@ -96,26 +99,40 @@ public final class VanillaJavaBridge implements AutoCloseable {
 
             Class<?>[] types = constructor.getParameterTypes();
             Object[] arguments = new Object[types.length];
+            final GameProfile profile = client.getGameProfile();
+            final Object worldSession = client.getTelemetryManager().createWorldSession(false, Duration.ZERO, null);
+
             for (int i = 0; i < types.length; i++) {
-                Class<?> type = types[i];
-                if (type.isAssignableFrom(client.getGameProfile().getClass())) {
-                    arguments[i] = client.getGameProfile();
-                } else if (type.isAssignableFrom(client.getTelemetryManager().createWorldSession(false, java.time.Duration.ZERO, null).getClass())) {
-                    arguments[i] = client.getTelemetryManager().createWorldSession(false, java.time.Duration.ZERO, null);
-                } else if (type.isAssignableFrom(ServerInfo.class)) {
-                    arguments[i] = serverInfo;
+                final Class<?> type = types[i];
+                final String typeName = type.getName();
+
+                if (GameProfile.class.isAssignableFrom(type)) {
+                    arguments[i] = profile;
+                } else if (typeName.endsWith("WorldSession") || typeName.endsWith("ClientWorldSession")) {
+                    arguments[i] = worldSession;
+                } else if (typeName.endsWith("FeatureSet")) {
+                    arguments[i] = null;
+                } else if (typeName.endsWith("Immutable") || typeName.contains("Immutable")) {
+                    arguments[i] = null;
                 } else if (type.isAssignableFrom(String.class)) {
                     arguments[i] = serverInfo.name();
-                } else if (type.isAssignableFrom(client.getCurrentServerEntry() == null ? Object.class : client.getCurrentServerEntry().getClass())) {
-                    arguments[i] = client.getCurrentServerEntry();
-                } else if (type.isAssignableFrom(Map.class)) {
+                } else if (ServerInfo.class.isAssignableFrom(type)) {
+                    arguments[i] = serverInfo;
+                } else if (typeName.endsWith("Screen") || typeName.contains("Gui") && typeName.endsWith("Screen")) {
+                    arguments[i] = null;
+                } else if (typeName.contains("Map") || type.isAssignableFrom(Map.class)) {
                     arguments[i] = Map.of();
-                } else if (type.isAssignableFrom(java.util.List.class)) {
-                    arguments[i] = java.util.List.of();
+                } else if (typeName.endsWith("ChatState") || typeName.contains("ChatState")) {
+                    arguments[i] = null;
+                } else if (typeName.endsWith("ServerLinks") || typeName.contains("ServerLinks")) {
+                    arguments[i] = null;
+                } else if (type.isEnum() || type.isPrimitive()) {
+                    arguments[i] = 0;
                 } else {
                     arguments[i] = null;
                 }
             }
+
             constructor.setAccessible(true);
             return (ClientConnectionState) constructor.newInstance(arguments);
         } catch (ReflectiveOperationException exception) {
