@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "dev.funtime.pe.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ScreenAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

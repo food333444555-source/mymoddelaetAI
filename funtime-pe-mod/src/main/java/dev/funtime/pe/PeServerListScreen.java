@@ -1,0 +1,83 @@
+package dev.funtime.pe;
+
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.text.Text;
+
+import java.util.List;
+
+public final class PeServerListScreen extends Screen {
+    private final Screen parent;
+    private Text status = Text.literal("");
+
+    public PeServerListScreen(Screen parent) {
+        super(Text.literal("Bedrock / PE"));
+        this.parent = parent;
+    }
+
+    @Override
+    protected void init() {
+        final List<PeServerEntry> servers = PeConfig.servers();
+        final int left = this.width / 2 - 155;
+        final int rowWidth = 310;
+        final int firstRow = 48;
+        final int rowHeight = 34;
+
+        for (int index = 0; index < servers.size() && index < 7; index++) {
+            final PeServerEntry server = servers.get(index);
+            final int y = firstRow + index * rowHeight;
+            this.addDrawableChild(ButtonWidget.builder(
+                            Text.literal(server.name() + "  •  " + server.host() + ":" + server.port()),
+                            ignored -> connect(server))
+                    .dimensions(left, y, rowWidth - 46, 28)
+                    .build());
+            this.addDrawableChild(ButtonWidget.builder(Text.literal("..."),
+                            ignored -> this.client.setScreen(new PeServerScreen(this, server)))
+                    .dimensions(left + rowWidth - 40, y, 40, 28)
+                    .build());
+        }
+
+        final int controlsY = firstRow + Math.min(servers.size(), 7) * rowHeight + 8;
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Добавить сервер"),
+                        ignored -> this.client.setScreen(new PeServerScreen(this, null)))
+                .dimensions(left, controlsY, rowWidth, 20)
+                .build());
+        this.addDrawableChild(ButtonWidget.builder(
+                        Text.literal("Аккаунт: " + PeConfig.account().displayName()),
+                        ignored -> this.client.setScreen(new PeAccountScreen(this)))
+                .dimensions(left, controlsY + 28, rowWidth, 20)
+                .build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Назад"), ignored -> close())
+                .dimensions(left, controlsY + 56, rowWidth, 20)
+                .build());
+    }
+
+    private void connect(PeServerEntry server) {
+        if (!server.isValid()) {
+            status = Text.literal("Запись сервера заполнена неправильно.");
+            return;
+        }
+        PeConnection.connect(MinecraftClient.getInstance(), this, server, this::setStatus);
+    }
+
+    private void setStatus(Text status) {
+        MinecraftClient.getInstance().execute(() -> this.status = status);
+    }
+
+    @Override
+    public void close() {
+        this.client.setScreen(parent);
+    }
+
+    @Override
+    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        this.renderBackground(context, mouseX, mouseY, delta);
+        context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 20, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("Сетевые серверы Bedrock"),
+                this.width / 2, 34, 0xA0A0A0);
+        context.drawCenteredTextWithShadow(this.textRenderer, status, this.width / 2, this.height - 18, 0xFFCC66);
+        super.render(context, mouseX, mouseY, delta);
+    }
+}
