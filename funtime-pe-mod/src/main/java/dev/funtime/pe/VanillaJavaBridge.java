@@ -1,10 +1,12 @@
 package dev.funtime.pe;
 
+import dev.funtime.pe.mixin.ClientPlayNetworkHandlerInvoker;
 import dev.funtime.pe.world.ChunkSection;
 import dev.funtime.pe.world.BedrockWorldState;
 import dev.funtime.pe.world.JavaChunkView;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.DownloadingTerrainScreen;
+import net.minecraft.client.network.ClientConnectionState;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.recipebook.ClientRecipeBook;
@@ -12,6 +14,7 @@ import net.minecraft.client.world.ClientChunkManager;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.NetworkSide;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.stat.StatHandler;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -20,7 +23,9 @@ import net.minecraft.world.World;
 import net.minecraft.world.chunk.ChunkStatus;
 import net.minecraft.world.chunk.WorldChunk;
 import net.minecraft.world.dimension.DimensionTypes;
+
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -52,12 +57,19 @@ public final class VanillaJavaBridge implements AutoCloseable {
                 server.name(),
                 server.host() + ":" + server.port(),
                 ServerInfo.ServerType.OTHER);
-        this.networkHandler = new ClientPlayNetworkHandler(client, javaConnection, serverInfo);
+        final ClientConnectionState connectionState = new ClientConnectionState(
+                client.getTelemetryManager().createWorldSession(
+                        false, Duration.ZERO, null),
+                serverInfo);
+        this.networkHandler = new ClientPlayNetworkHandler(
+                client, javaConnection, connectionState);
         this.world = new ClientWorld(
                 networkHandler,
                 new ClientWorld.Properties(Difficulty.NORMAL, false, false),
                 World.OVERWORLD,
-                DimensionTypes.OVERWORLD,
+                networkHandler.getRegistryManager()
+                        .getOrThrow(RegistryKeys.DIMENSION_TYPE)
+                        .getOrThrow(DimensionTypes.OVERWORLD),
                 10,
                 10,
                 client.worldRenderer,
@@ -71,7 +83,7 @@ public final class VanillaJavaBridge implements AutoCloseable {
      * project-specific play screen.
      */
     public static VanillaJavaBridge enter(MinecraftClient client, PeServerEntry server,
-                                          JavaPlaySession session) {
+                                           JavaPlaySession session) {
         final VanillaJavaBridge bridge = new VanillaJavaBridge(client, server, session);
         synchronized (ACTIVE) {
             ACTIVE.put(bridge.networkHandler, bridge);
@@ -87,7 +99,7 @@ public final class VanillaJavaBridge implements AutoCloseable {
         player.refreshPositionAndAngles(
                 position.playerX(), position.playerY(), position.playerZ(),
                 position.playerYaw(), position.playerPitch());
-        networkHandler.startWorldLoading(
+        ((ClientPlayNetworkHandlerInvoker) networkHandler).funtimepe$startWorldLoading(
                 player, world, DownloadingTerrainScreen.WorldEntryReason.OTHER);
         client.setScreen(null);
         syncChunks();
@@ -172,7 +184,7 @@ public final class VanillaJavaBridge implements AutoCloseable {
         }
     }
 
-    static boolean sendChat(ClientPlayNetworkHandler handler, String message) {
+    public static boolean sendChat(ClientPlayNetworkHandler handler, String message) {
         final VanillaJavaBridge bridge;
         synchronized (ACTIVE) {
             bridge = ACTIVE.get(handler);
