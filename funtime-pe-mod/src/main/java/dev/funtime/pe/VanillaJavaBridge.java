@@ -25,7 +25,7 @@ import net.minecraft.world.chunk.WorldChunk;
 import net.minecraft.world.dimension.DimensionTypes;
 
 import java.io.IOException;
-import java.time.Duration;
+import java.lang.reflect.Constructor;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -57,12 +57,8 @@ public final class VanillaJavaBridge implements AutoCloseable {
                 server.name(),
                 server.host() + ":" + server.port(),
                 ServerInfo.ServerType.OTHER);
-        final ClientConnectionState connectionState = new ClientConnectionState(
-                client.getTelemetryManager().createWorldSession(
-                        false, Duration.ZERO, null),
-                serverInfo);
         this.networkHandler = new ClientPlayNetworkHandler(
-                client, javaConnection, connectionState);
+                client, javaConnection, createConnectionState(serverInfo));
         this.world = new ClientWorld(
                 networkHandler,
                 new ClientWorld.Properties(Difficulty.NORMAL, false, false),
@@ -76,6 +72,29 @@ public final class VanillaJavaBridge implements AutoCloseable {
                 false,
                 0L,
                 63);
+    }
+
+    /**
+     * Creates the connection state without hard-coding its evolving record
+     * signature. Minecraft 1.21.4 changed this record several times between
+     * mappings builds, while the network handler still accepts the record.
+     */
+    private static ClientConnectionState createConnectionState(ServerInfo serverInfo) {
+        try {
+            Constructor<?> constructor = ClientConnectionState.class.getDeclaredConstructors()[0];
+            Class<?>[] parameterTypes = constructor.getParameterTypes();
+            Object[] arguments = new Object[parameterTypes.length];
+            for (int i = 0; i < parameterTypes.length; i++) {
+                if (parameterTypes[i].isAssignableFrom(ServerInfo.class)) {
+                    arguments[i] = serverInfo;
+                }
+            }
+            constructor.setAccessible(true);
+            return (ClientConnectionState) constructor.newInstance(arguments);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(
+                    "Unable to create Minecraft client connection state", exception);
+        }
     }
 
     /**
