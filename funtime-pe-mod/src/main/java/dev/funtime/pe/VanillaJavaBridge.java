@@ -1,11 +1,13 @@
 package dev.funtime.pe;
 
+import com.mojang.authlib.GameProfile;
 import dev.funtime.pe.mixin.ClientPlayNetworkHandlerInvoker;
 import dev.funtime.pe.world.ChunkSection;
 import dev.funtime.pe.world.BedrockWorldState;
 import dev.funtime.pe.world.JavaChunkView;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.DownloadingTerrainScreen;
+import net.minecraft.client.network.ClientConnectionState;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.recipebook.ClientRecipeBook;
@@ -13,6 +15,8 @@ import net.minecraft.client.world.ClientChunkManager;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.NetworkSide;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.stat.StatHandler;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -21,7 +25,10 @@ import net.minecraft.world.World;
 import net.minecraft.world.chunk.ChunkStatus;
 import net.minecraft.world.chunk.WorldChunk;
 import net.minecraft.world.dimension.DimensionTypes;
+
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.time.Duration;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -53,12 +60,15 @@ public final class VanillaJavaBridge implements AutoCloseable {
                 server.name(),
                 server.host() + ":" + server.port(),
                 ServerInfo.ServerType.OTHER);
-        this.networkHandler = new ClientPlayNetworkHandler(client, javaConnection, serverInfo);
+        final ClientConnectionState connectionState = createConnectionState(client, serverInfo);
+        this.networkHandler = new ClientPlayNetworkHandler(client, javaConnection, connectionState);
+        final RegistryWrapper.WrapperLookup registries = networkHandler.getRegistryManager();
         this.world = new ClientWorld(
                 networkHandler,
                 new ClientWorld.Properties(Difficulty.NORMAL, false, false),
                 World.OVERWORLD,
-                DimensionTypes.OVERWORLD,
+                registries.getOrThrow(RegistryKeys.DIMENSION_TYPE)
+                        .getOrThrow(DimensionTypes.OVERWORLD),
                 10,
                 10,
                 client.worldRenderer,
@@ -68,11 +78,73 @@ public final class VanillaJavaBridge implements AutoCloseable {
     }
 
     /**
+     * Minecraft 1.21.4 exposes a larger ClientConnectionState record than
+     * older versions. Build it with reflection so we don't depend on the exact
+     * parameter ordering of the current mappings build.
+     */
+    private static ClientConnectionState createConnectionState(MinecraftClient client,
+                                                               ServerInfo serverInfo) {
+        try {
+            Constructor<?> constructor = null;
+            for (Constructor<?> candidate : ClientConnectionState.class.getDeclaredConstructors()) {
+                if (candidate.getParameterCount() >= 2) {
+                    constructor = candidate;
+                    break;
+                }
+            }
+            if (constructor == null) {
+                throw new IllegalStateException("ClientConnectionState constructor not found");
+            }
+
+            Class<?>[] types = constructor.getParameterTypes();
+            Object[] arguments = new Object[types.length];
+            final GameProfile profile = client.getGameProfile();
+            final Object worldSession = client.getTelemetryManager().createWorldSession(false, Duration.ZERO, null);
+
+            for (int i = 0; i < types.length; i++) {
+                final Class<?> type = types[i];
+                final String typeName = type.getName();
+
+                if (GameProfile.class.isAssignableFrom(type)) {
+                    arguments[i] = profile;
+                } else if (typeName.endsWith("WorldSession") || typeName.endsWith("ClientWorldSession")) {
+                    arguments[i] = worldSession;
+                } else if (typeName.endsWith("FeatureSet")) {
+                    arguments[i] = null;
+                } else if (typeName.endsWith("Immutable") || typeName.contains("Immutable")) {
+                    arguments[i] = null;
+                } else if (type.isAssignableFrom(String.class)) {
+                    arguments[i] = serverInfo.name;
+                } else if (ServerInfo.class.isAssignableFrom(type)) {
+                    arguments[i] = serverInfo;
+                } else if (typeName.endsWith("Screen") || typeName.contains("Gui") && typeName.endsWith("Screen")) {
+                    arguments[i] = null;
+                } else if (typeName.contains("Map") || type.isAssignableFrom(Map.class)) {
+                    arguments[i] = Map.of();
+                } else if (typeName.endsWith("ChatState") || typeName.contains("ChatState")) {
+                    arguments[i] = null;
+                } else if (typeName.endsWith("ServerLinks") || typeName.contains("ServerLinks")) {
+                    arguments[i] = null;
+                } else if (type.isEnum() || type.isPrimitive()) {
+                    arguments[i] = 0;
+                } else {
+                    arguments[i] = null;
+                }
+            }
+
+            constructor.setAccessible(true);
+            return (ClientConnectionState) constructor.newInstance(arguments);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Unable to create Minecraft ClientConnectionState", exception);
+        }
+    }
+
+    /**
      * Enters the ordinary Minecraft world lifecycle instead of opening a
      * project-specific play screen.
      */
     public static VanillaJavaBridge enter(MinecraftClient client, PeServerEntry server,
-                                          JavaPlaySession session) {
+                                           JavaPlaySession session) {
         final VanillaJavaBridge bridge = new VanillaJavaBridge(client, server, session);
         synchronized (ACTIVE) {
             ACTIVE.put(bridge.networkHandler, bridge);
@@ -173,7 +245,7 @@ public final class VanillaJavaBridge implements AutoCloseable {
         }
     }
 
-    static boolean sendChat(ClientPlayNetworkHandler handler, String message) {
+    public static boolean sendChat(ClientPlayNetworkHandler handler, String message) {
         final VanillaJavaBridge bridge;
         synchronized (ACTIVE) {
             bridge = ACTIVE.get(handler);
