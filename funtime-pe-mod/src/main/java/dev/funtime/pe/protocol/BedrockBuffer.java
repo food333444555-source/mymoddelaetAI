@@ -80,18 +80,19 @@ public final class BedrockBuffer {
     }
 
     public BedrockBuffer writeVarInt(int value) {
-        int current = value;
-        while ((current & ~0x7f) != 0) {
-            writeByte((current & 0x7f) | 0x80);
+        long current = value & 0xffffffffL;
+        while ((current & ~0x7fL) != 0) {
+            writeByte((int) ((current & 0x7fL) | 0x80L));
             current >>>= 7;
         }
-        return writeByte(current);
+        writeByte((int) current);
+        return this;
     }
 
     public BedrockBuffer writeVarLong(long value) {
         long current = value;
         while ((current & ~0x7fL) != 0) {
-            writeByte((int) (current & 0x7f) | 0x80);
+            writeByte((int) ((current & 0x7fL) | 0x80L));
             current >>>= 7;
         }
         return writeByte((int) current);
