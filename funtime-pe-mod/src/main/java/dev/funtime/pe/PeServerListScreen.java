@@ -14,10 +14,15 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class PeServerListScreen extends Screen {
     private final Screen parent;
+    private final List<ButtonWidget> joinButtons = new ArrayList<>();
+    private ButtonWidget addServerButton;
+    private ButtonWidget accountButton;
+    private ButtonWidget backButton;
     private Text status = Text.literal("");
     private boolean connecting;
 
@@ -28,6 +33,7 @@ public final class PeServerListScreen extends Screen {
 
     @Override
     protected void init() {
+        joinButtons.clear();
         final List<PeServerEntry> servers = PeConfig.servers();
         final int left = this.width / 2 - 155;
         final int rowWidth = 310;
@@ -38,30 +44,52 @@ public final class PeServerListScreen extends Screen {
         for (int index = 0; index < servers.size() && index < 7; index++) {
             final PeServerEntry server = servers.get(index);
             final int y = firstRow + index * rowHeight;
-            this.addDrawableChild(ButtonWidget.builder(
+            final ButtonWidget joinButton = ButtonWidget.builder(
                             Text.literal("Зайти"),
                             ignored -> connect(server))
                     .dimensions(left + rowWidth - joinWidth - 46, y, joinWidth, 28)
-                    .build());
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("..."),
+                    .build();
+            joinButton.active = !connecting;
+            this.addDrawableChild(joinButton);
+            joinButtons.add(joinButton);
+
+            final ButtonWidget editButton = ButtonWidget.builder(Text.literal("..."),
                             ignored -> this.client.setScreen(new PeServerScreen(this, server)))
                     .dimensions(left + rowWidth - 40, y, 40, 28)
-                    .build());
+                    .build();
+            editButton.active = !connecting;
+            this.addDrawableChild(editButton);
         }
 
         final int controlsY = firstRow + Math.min(servers.size(), 7) * rowHeight + 8;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Добавить сервер"),
-                        ignored -> this.client.setScreen(new PeServerScreen(this, null)))
+        addServerButton = ButtonWidget.builder(Text.literal("Добавить сервер"),
+                        ignored -> {
+                            if (!connecting) {
+                                this.client.setScreen(new PeServerScreen(this, null));
+                            }
+                        })
                 .dimensions(left, controlsY, rowWidth, 20)
-                .build());
-        this.addDrawableChild(ButtonWidget.builder(
+                .build();
+        addServerButton.active = !connecting;
+        this.addDrawableChild(addServerButton);
+
+        accountButton = ButtonWidget.builder(
                         Text.literal("Аккаунт: " + PeConfig.account().displayName()),
-                        ignored -> this.client.setScreen(new PeAccountScreen(this)))
+                        ignored -> {
+                            if (!connecting) {
+                                this.client.setScreen(new PeAccountScreen(this));
+                            }
+                        })
                 .dimensions(left, controlsY + 28, rowWidth, 20)
-                .build());
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Назад"), ignored -> close())
+                .build();
+        accountButton.active = !connecting;
+        this.addDrawableChild(accountButton);
+
+        backButton = ButtonWidget.builder(Text.literal("Назад"), ignored -> close())
                 .dimensions(left, controlsY + 56, rowWidth, 20)
-                .build());
+                .build();
+        backButton.active = !connecting;
+        this.addDrawableChild(backButton);
     }
 
     private void connect(PeServerEntry server) {
@@ -75,14 +103,33 @@ public final class PeServerListScreen extends Screen {
         if (server.authMode() == PeAuthMode.MICROSOFT
                 && !PeConfig.account().isMicrosoftConnected()) {
             connecting = false;
+            updateButtonsState();
             this.client.setScreen(new PeNoticeScreen(this,
                     "Для этого сервера нужен Microsoft/Xbox вход.\n"
                             + "Откройте раздел аккаунта и завершите вход по коду устройства."));
             return;
         }
         connecting = true;
+        updateButtonsState();
         status = Text.literal("Подготовка подключения...");
         PeConnection.connect(MinecraftClient.getInstance(), this, server, this::setStatus);
+    }
+
+    private void updateButtonsState() {
+        for (ButtonWidget button : joinButtons) {
+            if (button != null) {
+                button.active = !connecting;
+            }
+        }
+        if (addServerButton != null) {
+            addServerButton.active = !connecting;
+        }
+        if (accountButton != null) {
+            accountButton.active = !connecting;
+        }
+        if (backButton != null) {
+            backButton.active = !connecting;
+        }
     }
 
     private void setStatus(Text status) {
@@ -94,6 +141,7 @@ public final class PeServerListScreen extends Screen {
                     || value.startsWith("Соединение закрыто")
                     || value.startsWith("Не удалось открыть")) {
                 connecting = false;
+                updateButtonsState();
             }
         });
     }
@@ -121,18 +169,24 @@ public final class PeServerListScreen extends Screen {
                 return true;
             }
             if (inside(mouseX, mouseY, left + rowWidth - 40, y, 40, 28)) {
-                this.client.setScreen(new PeServerScreen(this, servers.get(index)));
+                if (!connecting) {
+                    this.client.setScreen(new PeServerScreen(this, servers.get(index)));
+                }
                 return true;
             }
         }
 
         final int controlsY = firstRow + Math.min(servers.size(), 7) * rowHeight + 8;
         if (inside(mouseX, mouseY, left, controlsY, rowWidth, 20)) {
-            this.client.setScreen(new PeServerScreen(this, null));
+            if (!connecting) {
+                this.client.setScreen(new PeServerScreen(this, null));
+            }
             return true;
         }
         if (inside(mouseX, mouseY, left, controlsY + 28, rowWidth, 20)) {
-            this.client.setScreen(new PeAccountScreen(this));
+            if (!connecting) {
+                this.client.setScreen(new PeAccountScreen(this));
+            }
             return true;
         }
         if (inside(mouseX, mouseY, left, controlsY + 56, rowWidth, 20)) {
@@ -162,10 +216,9 @@ public final class PeServerListScreen extends Screen {
         final List<PeServerEntry> servers = PeConfig.servers();
         final int left = this.width / 2 - 155;
         final int firstRow = 48;
-        final int rowHeight = 34;
         for (int index = 0; index < servers.size() && index < 7; index++) {
             final PeServerEntry server = servers.get(index);
-            final int y = firstRow + index * rowHeight;
+            final int y = firstRow + index * 34;
             context.drawTextWithShadow(this.textRenderer, Text.literal(server.name()),
                     left + 8, y + 4, 0xFFFFFF);
             context.drawTextWithShadow(this.textRenderer,
