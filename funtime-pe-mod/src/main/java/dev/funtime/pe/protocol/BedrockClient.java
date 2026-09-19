@@ -22,9 +22,9 @@ import net.minecraft.util.math.Direction;
 /**
  * Bedrock transport and login state machine for the PE session.
  *
- * <p>We keep the flow deterministic by validating packet ids before processing,
- * logging the exact packet ordering, and tolerating optional boolean fields in
- * resource-pack responses instead of assuming a single exact layout.</p>
+ * <p>This driver intentionally keeps the Bedrock packet flow explicit so we can
+ * identify exactly which stage fails during a real login attempt: RakNet setup,
+ * network settings, login, handshake, resource-pack negotiation, or world start.
  */
 public final class BedrockClient implements AutoCloseable {
     private static final int BEDROCK_BATCH_ID = 0xfe;
@@ -98,8 +98,8 @@ public final class BedrockClient implements AutoCloseable {
                 BedrockLoginFactory.LoginMaterial loginMaterial = null;
                 final long deadline = System.nanoTime() + 45_000_000_000L;
                 while (!closed && System.nanoTime() < deadline) {
-                    for (byte[] packet : receiveBatch(Math.min(3000,
-                            Math.max(1, (deadline - System.nanoTime()) / 1_000_000)))) {
+                    for (byte[] packet : receiveBatch(Math.max(1, (int) Math.min(3000,
+                            Math.max(1, (deadline - System.nanoTime()) / 1_000_000L))))) {
                         if (packet == null || packet.length == 0) {
                             continue;
                         }
@@ -146,16 +146,16 @@ public final class BedrockClient implements AutoCloseable {
                             continue;
                         }
                         if (packetId == BedrockPacketIds.RESOURCE_PACK_DATA_INFO) {
-                            final String id = resourcePacks.acceptDataInfo(reader);
-                            final byte[] request = resourcePacks.nextChunkRequest(id);
+                            final String packId = resourcePacks.acceptDataInfo(reader);
+                            final byte[] request = resourcePacks.nextChunkRequest(packId);
                             if (request != null) {
                                 sendResourcePackChunkRequest(request);
                             }
                             continue;
                         }
                         if (packetId == BedrockPacketIds.RESOURCE_PACK_CHUNK_DATA) {
-                            final String id = resourcePacks.acceptChunkData(reader);
-                            final byte[] request = resourcePacks.nextChunkRequest(id);
+                            final String packId = resourcePacks.acceptChunkData(reader);
+                            final byte[] request = resourcePacks.nextChunkRequest(packId);
                             if (request != null && !resourcePacks.allComplete()) {
                                 sendResourcePackChunkRequest(request);
                             }
@@ -350,12 +350,18 @@ public final class BedrockClient implements AutoCloseable {
 
     private static List<String> readResourcePackIds(BedrockBuffer.Reader reader)
             throws IOException {
-        // Some Bedrock servers send optional booleans before the pack list.
-        // We consume up to three such flags if they are present.
-        for (int index = 0; index < 3 && reader.remaining() > 0; index++) {
+        // Bedrock resource-pack negotiation can include a few optional boolean flags
+        // before the descriptor list. Consume them if they are present.
+        int flagsSeen = 0;
+        while (reader.remaining() > 0 && flagsSeen < 3) {
+            final int remainingBefore = reader.remaining();
             try {
                 reader.readBoolean();
+                flagsSeen++;
             } catch (IOException ignored) {
+                break;
+            }
+            if (reader.remaining() == remainingBefore) {
                 break;
             }
         }
