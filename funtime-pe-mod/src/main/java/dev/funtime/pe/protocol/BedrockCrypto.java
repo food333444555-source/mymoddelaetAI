@@ -9,6 +9,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
@@ -26,44 +27,21 @@ import java.util.zip.InflaterInputStream;
  * Bedrock login encryption for modern protocol versions.
  *
  * <p>Bedrock derives a 32-byte key with ECDH and SHA-256. The encrypted
- * payload uses the AES-256-GCM counter stream and carries the protocol's own
- * eight-byte checksum. The counter stream is kept alive across packets, just
- * like the Bedrock client.</p>
+ * payload uses the AES-256-CTR stream and carries the protocol's own
+ * eight-byte checksum. A fresh stream counter is used per packet so a single
+ * reused IV cannot silently corrupt the session.</p>
  */
 final class BedrockCrypto {
     private static final byte[] CLIENT_SALT = "🧂".getBytes(StandardCharsets.UTF_8);
 
     private final byte[] secretKey;
-    private final Cipher encryptCipher;
-    private final Cipher decryptCipher;
     private final int compressionAlgorithm;
     private long sendCounter;
     private long receiveCounter;
 
-    private BedrockCrypto(byte[] secretKey, int compressionAlgorithm)
-            throws IOException {
-        try {
-            this.secretKey = secretKey;
-            this.compressionAlgorithm = compressionAlgorithm;
-            /*
-             * Modern Bedrock uses the ciphertext stream produced by AES-GCM,
-             * but deliberately does not send GCM's authentication tag. Java's
-             * GCM decryptor therefore buffers the whole packet and returns no
-             * plaintext from update(). The wire-compatible part is the AES
-             * counter stream, so use CTR directly and keep the Bedrock
-             * eight-byte checksum below as the packet integrity check.
-             */
-            this.encryptCipher = Cipher.getInstance("AES/CTR/NoPadding");
-            this.decryptCipher = Cipher.getInstance("AES/CTR/NoPadding");
-            final byte[] iv = counterIv(secretKey);
-            final SecretKeySpec key = new SecretKeySpec(secretKey, "AES");
-            encryptCipher.init(Cipher.ENCRYPT_MODE, key,
-                    new javax.crypto.spec.IvParameterSpec(iv));
-            decryptCipher.init(Cipher.DECRYPT_MODE, key,
-                    new javax.crypto.spec.IvParameterSpec(iv));
-        } catch (Exception exception) {
-            throw new IOException("Не удалось включить Bedrock encryption", exception);
-        }
+    private BedrockCrypto(byte[] secretKey, int compressionAlgorithm) throws IOException {
+        this.secretKey = secretKey;
+        this.compressionAlgorithm = compressionAlgorithm;
     }
 
     static BedrockCrypto fromServerToken(String token, PrivateKey clientPrivateKey,
@@ -112,22 +90,25 @@ final class BedrockCrypto {
 
     byte[] encryptBatch(byte[] rawBatch) throws IOException {
         final byte[] compressed = compress(rawBatch);
-        final byte[] withChecksum = appendChecksum(compressed, sendCounter++);
-        return applyCipher(encryptCipher, withChecksum);
+        final byte[] withChecksum = appendChecksum(compressed, sendCounter);
+        final byte[] result = crypt(withChecksum, sendCounter);
+        sendCounter++;
+        return result;
     }
 
     byte[] decryptBatch(byte[] encrypted) throws IOException {
-        final byte[] plain = applyCipher(decryptCipher, encrypted);
+        final byte[] plain = crypt(encrypted, receiveCounter);
         if (plain.length < 8) {
             throw new IOException("Слишком короткий зашифрованный Bedrock batch");
         }
         final int bodyLength = plain.length - 8;
         final byte[] body = java.util.Arrays.copyOf(plain, bodyLength);
         final byte[] expected = java.util.Arrays.copyOfRange(plain, bodyLength, plain.length);
-        final byte[] actual = checksum(body, receiveCounter++);
+        final byte[] actual = checksum(body, receiveCounter);
         if (!MessageDigest.isEqual(expected, actual)) {
             throw new IOException("Bedrock encryption checksum mismatch");
         }
+        receiveCounter++;
         return decompress(body);
     }
 
@@ -154,20 +135,23 @@ final class BedrockCrypto {
         }
     }
 
-    private byte[] applyCipher(Cipher cipher, byte[] input) throws IOException {
+    private byte[] crypt(byte[] input, long counter) throws IOException {
         try {
-            return cipher.update(input);
+            final Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(secretKey, "AES"),
+                    new javax.crypto.spec.IvParameterSpec(counterVector(counter)));
+            return cipher.doFinal(input);
         } catch (Exception exception) {
             throw new IOException("Ошибка Bedrock AES stream", exception);
         }
     }
 
-    private static byte[] counterIv(byte[] secretKey) {
-        final byte[] iv = new byte[16];
-        System.arraycopy(secretKey, 0, iv, 0, 12);
-        // GCM's first payload block uses inc32(J0), i.e. counter 2.
-        iv[15] = 2;
-        return iv;
+    private byte[] counterVector(long counter) {
+        final byte[] vector = new byte[16];
+        final byte[] counterBytes = ByteBuffer.allocate(8).putLong(counter).array();
+        System.arraycopy(secretKey, 0, vector, 0, 8);
+        System.arraycopy(counterBytes, 0, vector, 8, 8);
+        return vector;
     }
 
     private byte[] compress(byte[] input) throws IOException {
